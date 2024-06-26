@@ -1,0 +1,1 @@
+export {getWeb3,getDjedContract,getOracleAddress,getCoinContracts} from './web3';
