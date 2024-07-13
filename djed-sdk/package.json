@@ -18,5 +18,8 @@
     "@rollup/plugin-sucrase": "^5.0.2",
     "rollup": "^4.18.0",
     "web3": "^4.10.0"
+  },
+  "dependencies": {
+    "ethers": "^5.7.2"
   }
 }

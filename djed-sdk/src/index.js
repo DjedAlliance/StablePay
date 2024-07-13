@@ -1,1 +1,2 @@
-export {getWeb3,getDjedContract,getOracleAddress,getCoinContracts} from './web3';
+export {DjedInstance} from './web3';
+export { getAccountDetails} from './account';
