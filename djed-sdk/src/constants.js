@@ -1,0 +1,1 @@
+export const BC_DECIMALS = 18;

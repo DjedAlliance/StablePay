@@ -1,6 +1,6 @@
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('web3')) :
-  typeof define === 'function' && define.amd ? define(['exports', 'web3'], factory) :
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('web3'), require('ethers')) :
+  typeof define === 'function' && define.amd ? define(['exports', 'web3', 'ethers'], factory) :
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.DjedSdk = {}, global.Web3));
 })(this, (function (exports, Web3) { 'use strict';
 
@@ -1071,40 +1071,129 @@
   	abi: abi
   };
 
-  // Modify getWeb3 to accept BLOCKCHAIN_URI as a parameter
-  const getWeb3 = (BLOCKCHAIN_URI) => {
-    return new Promise((resolve, reject) => {
-      try {
-        const web3 = new Web3(BLOCKCHAIN_URI);
-        resolve(web3);
-      } catch (error) {
-        reject(error);
+  function convertInt(promise) {
+      return promise.then((value) => parseInt(value));
+    }
+    
+
+
+  function web3Promise(contract, method, ...args) {
+      return contract.methods[method](...args).call();
+    }
+
+  function reverseString(s) {
+      return s.split("").reverse().join("");
+    }
+    
+    function intersperseCommas(s) {
+      let newString = s.replace(/(.{3})/g, "$1,");
+      if (s.length % 3 === 0) {
+        return newString.slice(0, newString.length - 1);
+      } else {
+        return newString;
       }
-    });
+    }
+    
+    function decimalScaling(unscaledString, decimals, show = 6) {
+      if (decimals <= 0) {
+        return unscaledString + "0".repeat(-decimals);
+      }
+    
+      let prefix;
+      let suffix;
+    
+      if (unscaledString.length <= decimals) {
+        prefix = "0";
+        suffix = "0".repeat(decimals - unscaledString.length) + unscaledString;
+      } else {
+        prefix = unscaledString.slice(0, -decimals);
+        suffix = unscaledString.slice(-decimals);
+      }
+    
+      suffix = suffix.slice(0, show);
+      suffix = intersperseCommas(suffix);
+    
+      if (show <= decimals) {
+        // Remove commas after the decimal point
+        suffix = suffix.replace(/,/g, "");
+      }
+    
+      prefix = reverseString(intersperseCommas(reverseString(prefix)));
+    
+      return prefix + "." + suffix;
+    }
+    
+    function scaledUnscaledPromise(promise, scaling) {
+      return promise.then((value) => [decimalScaling(value.toString(10), scaling), value]);
+    }
+
+  const DjedInstance = async (BLOCKCHAIN_URI, DJED_ADDRESS) => {
+    try {
+      
+      const web3 = new Web3(new Web3.providers.HttpProvider(BLOCKCHAIN_URI));
+
+      
+      const djedContract = new web3.eth.Contract(djedArtifact.abi, DJED_ADDRESS);
+
+      
+      const [oracleAddress, stableCoinAddress, reserveCoinAddress] = await Promise.all([
+        djedContract.methods.oracle().call(), // Fetch the Oracle address
+        djedContract.methods.stableCoin().call(), // Fetch the StableCoin address
+        djedContract.methods.reserveCoin().call() // Fetch the ReserveCoin address
+      ]);
+
+     
+      const stableCoin = new web3.eth.Contract(coinArtifact.abi, stableCoinAddress);
+      const reserveCoin = new web3.eth.Contract(coinArtifact.abi, reserveCoinAddress);
+
+      
+      const [scDecimals, rcDecimals] = await Promise.all([
+        convertInt(web3Promise(stableCoin, "decimals")),
+        convertInt(web3Promise(reserveCoin, "decimals"))
+      ]);
+
+      
+      return {
+        web3, 
+        djedContract, 
+        oracleAddress, 
+        stableCoin, 
+        reserveCoin, 
+        scDecimals, 
+        rcDecimals 
+      };
+    } catch (error) {
+      // If any error occurs during the process, throw an error with a descriptive message.
+      throw new Error(`Initialization failed: ${error.message}`);
+    }
   };
 
-  // Modify getDjedContract to accept DJED_ADDRESS as a parameter
-  const getDjedContract = (web3, DJED_ADDRESS) => {
-    return new web3.eth.Contract(djedArtifact.abi, DJED_ADDRESS);
-  };
+  const BC_DECIMALS = 18;
 
-  const getOracleAddress = async (djedContract) => {
-    return await djedContract.methods.oracle().call();
-  };
+  const getAccountDetails = async (account, djedInstance) => {
+    const { web3, stableCoin, reserveCoin, scDecimals, rcDecimals } = djedInstance;
 
-  const getCoinContracts = async (djedContract, web3) => {
-    const [stableCoinAddress, reserveCoinAddress] = await Promise.all([
-      djedContract.methods.stableCoin().call(),
-      djedContract.methods.reserveCoin().call()
+    const [
+      [scaledBalanceSc, unscaledBalanceSc],
+      [scaledBalanceRc, unscaledBalanceRc],
+      [scaledBalanceBc, unscaledBalanceBc]
+    ] = await Promise.all([
+      scaledUnscaledPromise(web3Promise(stableCoin, "balanceOf", account), scDecimals),
+      scaledUnscaledPromise(web3Promise(reserveCoin, "balanceOf", account), rcDecimals),
+      scaledUnscaledPromise(web3.eth.getBalance(account), BC_DECIMALS)
     ]);
-    const stableCoin = new web3.eth.Contract(coinArtifact.abi, stableCoinAddress);
-    const reserveCoin = new web3.eth.Contract(coinArtifact.abi, reserveCoinAddress);
-    return { stableCoin, reserveCoin };
+
+    return {
+      scaledBalanceSc,
+      unscaledBalanceSc,
+      scaledBalanceRc,
+      unscaledBalanceRc,
+      scaledBalanceBc,
+      unscaledBalanceBc
+    };
   };
 
-  exports.getCoinContracts = getCoinContracts;
-  exports.getDjedContract = getDjedContract;
-  exports.getOracleAddress = getOracleAddress;
-  exports.getWeb3 = getWeb3;
+  exports.DjedInstance = DjedInstance;
+  exports.getAccountDetails = getAccountDetails;
 
 }));
