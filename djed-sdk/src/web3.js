@@ -1,12 +1,35 @@
 import Web3 from "web3";
 import djedArtifact from "./artifacts/DjedABI.json";
 import coinArtifact from "./artifacts/CoinABI.json";
+import oracleArtifact from "./artifacts/OracleABI.json";
 import { convertInt,web3Promise } from "./helpers";
 
-export const DjedInstance = async (BLOCKCHAIN_URI, DJED_ADDRESS) => {
+ const getWeb3 = (BLOCKCHAIN_URI) =>
+  new Promise(async (resolve, reject) => {
+    if (window.ethereum) {
+      try {
+        const web3 = new Web3(BLOCKCHAIN_URI);
+        resolve(web3);
+      } catch (error) {
+        reject(error);
+      }
+    } else {
+      reject("Install Metamask");
+    }
+  });
+
+  const getOracleContract = (web3, oracleAddress, msgSender) => {
+    const oracle = new web3.eth.Contract(oracleArtifact.abi, oracleAddress, {
+      from: msgSender
+    });
+    return oracle;
+  };
+
+export const DjedInstance = async (BLOCKCHAIN_URI, DJED_ADDRESS,msgSender) => {
   try {
     
-    const web3 = new Web3(new Web3.providers.HttpProvider(BLOCKCHAIN_URI));
+    const web3 = await getWeb3(BLOCKCHAIN_URI);
+
 
     
     const djedContract = new web3.eth.Contract(djedArtifact.abi, DJED_ADDRESS);
@@ -21,7 +44,7 @@ export const DjedInstance = async (BLOCKCHAIN_URI, DJED_ADDRESS) => {
    
     const stableCoin = new web3.eth.Contract(coinArtifact.abi, stableCoinAddress);
     const reserveCoin = new web3.eth.Contract(coinArtifact.abi, reserveCoinAddress);
-
+    const oracleContract = getOracleContract(web3, oracleAddress, msgSender);
     
     const [scDecimals, rcDecimals] = await Promise.all([
       convertInt(web3Promise(stableCoin, "decimals")),
@@ -32,7 +55,8 @@ export const DjedInstance = async (BLOCKCHAIN_URI, DJED_ADDRESS) => {
     return {
       web3, 
       djedContract, 
-      oracleAddress, 
+      oracleAddress,
+      oracleContract, 
       stableCoin, 
       reserveCoin, 
       scDecimals, 
