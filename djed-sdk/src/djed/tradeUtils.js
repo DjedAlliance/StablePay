@@ -1,9 +1,15 @@
-import { TRANSACTION_USD_LIMIT, BC_DECIMALS,SCALING_DECIMALS,FEE_UI} from "../constants";
-import { 
-  decimalUnscaling, 
-  decimalScaling, 
-  scaledUnscaledPromise, 
-  web3Promise
+import {
+  TRANSACTION_USD_LIMIT,
+  BC_DECIMALS,
+  SCALING_DECIMALS,
+  FEE_UI,
+  CONFIRMATION_WAIT_PERIOD,
+} from "../constants";
+import {
+  decimalUnscaling,
+  decimalScaling,
+  scaledUnscaledPromise,
+  web3Promise,
 } from "../helpers";
 
 export const scalingFactor = decimalUnscaling("1", SCALING_DECIMALS);
@@ -11,19 +17,6 @@ export const FEE_UI_UNSCALED = decimalUnscaling(
   (FEE_UI / 100).toString(),
   SCALING_DECIMALS
 );
-
-/**
- * Function that converts coin amount to BC
- * @param {*} amount unscaled coin amount to be converted to BC
- * @param {*} price unscaled coin price
- * @param {*} decimals coin decimals
- * @returns unscaled BC amount
- */
-export const convertToBC = (amount, price, decimals) => {
-  const decimalScalingFactor = BigInt(Math.pow(10, decimals));
-  return (BigInt(amount) * BigInt(price)) / decimalScalingFactor;
-};
-
 export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
   const amountUnscaled = decimalUnscaling(amountScaled, decimals);
   return scaledUnscaledPromise(web3Promise(djed, method, 0), BC_DECIMALS).then(
@@ -43,10 +36,22 @@ export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
         totalScaled,
         totalUnscaled,
         priceUnscaled,
-        priceScaled
+        priceScaled,
       };
     }
   );
+};
+
+/**
+ * Function that converts coin amount to BC
+ * @param {*} amount unscaled coin amount to be converted to BC
+ * @param {*} price unscaled coin price
+ * @param {*} decimals coin decimals
+ * @returns unscaled BC amount
+ */
+export const convertToBC = (amount, price, decimals) => {
+  const decimalScalingFactor = BigInt(Math.pow(10, decimals));
+  return (BigInt(amount) * BigInt(price)) / decimalScalingFactor;
 };
 
 /**
@@ -66,13 +71,13 @@ export const calculateIsRatioBelowMax = ({
   totalScSupply,
   reserveRatioMax,
   scDecimalScalingFactor,
-  thresholdSupplySC
+  thresholdSupplySC,
 }) => {
   const scalingFactorBigInt = BigInt(scalingFactor);
 
   return (
-    (BigInt(reserveBc) * scalingFactorBigInt * BigInt(scDecimalScalingFactor)) <
-      (BigInt(totalScSupply) * BigInt(scPrice) * BigInt(reserveRatioMax)) ||
+    BigInt(reserveBc) * scalingFactorBigInt * BigInt(scDecimalScalingFactor) <
+      BigInt(totalScSupply) * BigInt(scPrice) * BigInt(reserveRatioMax) ||
     BigInt(totalScSupply) <= BigInt(thresholdSupplySC)
   );
 };
@@ -92,13 +97,13 @@ export const calculateIsRatioAboveMin = ({
   reserveBc,
   totalScSupply,
   reserveRatioMin,
-  scDecimalScalingFactor
+  scDecimalScalingFactor,
 }) => {
   const scalingFactorBigInt = BigInt(scalingFactor);
 
   return (
-    (BigInt(reserveBc) * scalingFactorBigInt * BigInt(scDecimalScalingFactor)) >
-    (BigInt(totalScSupply) * BigInt(scPrice) * BigInt(reserveRatioMin))
+    BigInt(reserveBc) * scalingFactorBigInt * BigInt(scDecimalScalingFactor) >
+    BigInt(totalScSupply) * BigInt(scPrice) * BigInt(reserveRatioMin)
   );
 };
 
@@ -109,10 +114,9 @@ export const calculateIsRatioAboveMin = ({
  * @param {*} thresholdSCSupply
  * @returns
  */
-export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) => 
+export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
   amountUSD > TRANSACTION_USD_LIMIT &&
   BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
-
 
 export const promiseTx = (isWalletConnected, tx, signer) => {
   if (!isWalletConnected) {
@@ -127,7 +131,9 @@ export const promiseTx = (isWalletConnected, tx, signer) => {
 export const verifyTx = (web3, hash) => {
   return new Promise((res) => {
     setTimeout(() => {
-      web3.eth.getTransactionReceipt(hash).then((receipt) => res(receipt.status));
+      web3.eth
+        .getTransactionReceipt(hash)
+        .then((receipt) => res(receipt.status));
     }, CONFIRMATION_WAIT_PERIOD);
   });
 };
@@ -141,7 +147,8 @@ export const verifyTx = (web3, hash) => {
  */
 export const calculateTxFees = (value, fee, treasuryFee, feeUI) => {
   const f = (BigInt(value) * BigInt(fee)) / BigInt(scalingFactor);
-  const f_ui = (BigInt(value) * BigInt(feeUI || FEE_UI_UNSCALED)) / BigInt(scalingFactor);
+  const f_ui =
+    (BigInt(value) * BigInt(feeUI || FEE_UI_UNSCALED)) / BigInt(scalingFactor);
   const f_t = (BigInt(value) * BigInt(treasuryFee)) / BigInt(scalingFactor);
 
   return { f, f_ui, f_t };
@@ -170,7 +177,8 @@ export const deductFees = (value, fee, treasuryFee) => {
 export const appendFees = (amountBC, treasuryFee, fee, fee_UI) => {
   const totalFees = BigInt(treasuryFee) + BigInt(fee) + BigInt(fee_UI);
   const substractedFees = BigInt(scalingFactor) - totalFees;
-  const appendedFeesAmount = (BigInt(amountBC) * BigInt(scalingFactor)) / substractedFees;
+  const appendedFeesAmount =
+    (BigInt(amountBC) * BigInt(scalingFactor)) / substractedFees;
 
   return appendedFeesAmount.toString();
 };
@@ -180,18 +188,17 @@ export const appendFees = (amountBC, treasuryFee, fee, fee_UI) => {
  * @param {*} djed Djed contract
  * @returns Treasury and platform fee
  */
- export const getFees = async (djed) => {
+export const getFees = async (djed) => {
   try {
     const [treasuryFee, fee] = await Promise.all([
       web3Promise(djed, "treasuryFee"),
-      web3Promise(djed, "fee")
+      web3Promise(djed, "fee"),
     ]);
     return {
       treasuryFee,
-      fee
+      fee,
     };
   } catch (error) {
     console.log("error", error);
   }
 };
-

@@ -1,31 +1,6 @@
 export function web3Promise(contract, method, ...args) {
   return contract.methods[method](...args).call();
 }
-export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
-  const amountUnscaled = decimalUnscaling(amountScaled, decimals);
-  return scaledUnscaledPromise(web3Promise(djed, method, 0), BC_DECIMALS).then(
-    (price) => {
-      const [priceScaled, priceUnscaled] = price;
-      const totalUnscaled = convertToBC(
-        amountUnscaled,
-        priceUnscaled,
-        decimals
-      ).toString();
-
-      const totalScaled = decimalScaling(totalUnscaled, BC_DECIMALS);
-
-      return {
-        amountScaled,
-        amountUnscaled,
-        totalScaled,
-        totalUnscaled,
-        priceUnscaled,
-        priceScaled
-      };
-    }
-  );
-};
-
 // Function to build a transaction
 // Set gas limit to 500,000 by default
 export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
@@ -33,7 +8,7 @@ export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
     to: to_,
     from: from_,
     value: "0x" + BigInt(value_).toString(16), // Use BigInt instead of BN
-    data: data_
+    data: data_,
   };
   if (setGasLimit) {
     tx.gasLimit = 500_000;
@@ -93,7 +68,9 @@ export function decimalUnscaling(scaledString, decimals) {
     return scaledString + "0".repeat(decimals);
   }
 
-  let s = scaledString.slice(0, pos) + scaledString.slice(pos + 1, pos + 1 + decimals);
+  let s =
+    scaledString.slice(0, pos) +
+    scaledString.slice(pos + 1, pos + 1 + decimals);
   if (scaledString.length - pos - 1 < decimals) {
     s += "0".repeat(decimals - (scaledString.length - pos - 1));
   }
@@ -105,7 +82,10 @@ export function scaledPromise(promise, scaling) {
 }
 
 export function scaledUnscaledPromise(promise, scaling) {
-  return promise.then((value) => [decimalScaling(value.toString(10), scaling), value]);
+  return promise.then((value) => [
+    decimalScaling(value.toString(10), scaling),
+    value,
+  ]);
 }
 
 export function percentageScale(value, scaling, showSymbol = false) {
@@ -119,4 +99,33 @@ export function percentageScale(value, scaling, showSymbol = false) {
 export function percentScaledPromise(promise, scaling) {
   return promise.then((value) => percentageScale(value, scaling, true));
 }
+// currency conversions:
+export function calculateBcUsdEquivalent(coinsDetails, amountFloat) {
+  const adaPerUsd = parseFloat(
+    coinsDetails?.scaledScExchangeRate.replaceAll(",", "")
+  );
+  const eqPrice = (1e6 * amountFloat) / adaPerUsd;
+  return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
+}
 
+export function getBcUsdEquivalent(coinsDetails, amountFloat) {
+  return "$" + calculateBcUsdEquivalent(coinsDetails, amountFloat);
+}
+
+export function calculateRcUsdEquivalent(coinsDetails, amountFloat) {
+  const adaPerRc = parseFloat(coinsDetails?.scaledSellPriceRc);
+  const adaPerUsd = parseFloat(
+    coinsDetails?.scaledScExchangeRate.replaceAll(",", "")
+  );
+  const eqPrice = (1e6 * amountFloat * adaPerRc) / adaPerUsd;
+  return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
+}
+export function getRcUsdEquivalent(coinsDetails, amountFloat) {
+  return "$" + calculateRcUsdEquivalent(coinsDetails, amountFloat);
+}
+
+export function getScAdaEquivalent(coinsDetails, amountFloat) {
+  const adaPerSc = parseFloat(coinsDetails?.scaledPriceSc.replaceAll(",", ""));
+  const eqPrice = 1e6 * amountFloat * adaPerSc;
+  return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
+}
