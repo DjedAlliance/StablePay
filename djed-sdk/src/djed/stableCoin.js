@@ -75,11 +75,13 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
   }
 };
 
-export const buyScTx = (djed, account, value, UI, DJED_ADDRESS) => {
-  const data = djed.methods
-    .buyStableCoins(account, FEE_UI_UNSCALED, UI)
-    .encodeABI();
-  return buildTx(account, DJED_ADDRESS, value, data);
+// Function to allow User 1 (payer) to pay and User 2 (receiver) to receive stablecoins
+export const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
+  // `receiver` will get the stablecoins
+  const data = djed.methods.buyStableCoins(receiver, FEE_UI_UNSCALED, UI).encodeABI();
+  
+  // `payer` is sending the funds
+  return buildTx(payer, DJED_ADDRESS, value, data);
 };
 
 export const sellScTx = (djed, account, amount, UI, DJED_ADDRESS) => {
