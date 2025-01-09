@@ -1,0 +1,38 @@
+.stablePayButton {
+  box-sizing: border-box;
+  width: 372px;
+  height: 104px;
+  background: linear-gradient(90deg, #000000 0%, #f7941d 100%);
+  border: 1px solid #bc5f26;
+  border-radius: 3px;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stablePayButton:hover {
+  opacity: 0.9;
+}
+
+.stablePayButton .logo {
+  width: 25px;
+  height: 25px;
+  margin-right: 20px;
+  background-image: url("../assets/stablepay-logo.svg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+.stablePayButton .buttonText {
+  flex-grow: 1;
+  text-align: center;
+}
