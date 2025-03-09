@@ -5,11 +5,17 @@ import {
   FEE_UI,
   CONFIRMATION_WAIT_PERIOD,
 } from "../constants";
+// import {
+//   decimalUnscaling,
+//   decimalScaling,
+//   scaledUnscaledPromise,
+//   web3Promise,
+// } from "../helpers";
 import {
   decimalUnscaling,
   decimalScaling,
   scaledUnscaledPromise,
-  web3Promise,
+  ethersPromise,
 } from "../helpers";
 
 export const scalingFactor = decimalUnscaling("1", SCALING_DECIMALS);
@@ -17,29 +23,45 @@ export const FEE_UI_UNSCALED = decimalUnscaling(
   (FEE_UI / 100).toString(),
   SCALING_DECIMALS
 );
-export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
+// export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
+//   const amountUnscaled = decimalUnscaling(amountScaled, decimals);
+//   return scaledUnscaledPromise(web3Promise(djed, method, 0), BC_DECIMALS).then(
+//     (price) => {
+//       const [priceScaled, priceUnscaled] = price;
+//       const totalUnscaled = convertToBC(
+//         amountUnscaled,
+//         priceUnscaled,
+//         decimals
+//       ).toString();
+
+//       const totalScaled = decimalScaling(totalUnscaled, BC_DECIMALS);
+
+//       return {
+//         amountScaled,
+//         amountUnscaled,
+//         totalScaled,
+//         totalUnscaled,
+//         priceUnscaled,
+//         priceScaled,
+//       };
+//     }
+//   );
+// };
+export const tradeDataPriceCore = async (djed, method, decimals, amountScaled) => {
   const amountUnscaled = decimalUnscaling(amountScaled, decimals);
-  return scaledUnscaledPromise(web3Promise(djed, method, 0), BC_DECIMALS).then(
-    (price) => {
-      const [priceScaled, priceUnscaled] = price;
-      const totalUnscaled = convertToBC(
-        amountUnscaled,
-        priceUnscaled,
-        decimals
-      ).toString();
+  const price = await scaledUnscaledPromise(ethersPromise(djed, method, 0), BC_DECIMALS);
+  const [priceScaled, priceUnscaled] = price;
+  const totalUnscaled = convertToBC(amountUnscaled, priceUnscaled, decimals).toString();
+  const totalScaled = decimalScaling(totalUnscaled, BC_DECIMALS);
 
-      const totalScaled = decimalScaling(totalUnscaled, BC_DECIMALS);
-
-      return {
-        amountScaled,
-        amountUnscaled,
-        totalScaled,
-        totalUnscaled,
-        priceUnscaled,
-        priceScaled,
-      };
-    }
-  );
+  return {
+    amountScaled,
+    amountUnscaled,
+    totalScaled,
+    totalUnscaled,
+    priceUnscaled,
+    priceScaled,
+  };
 };
 
 /**
@@ -118,22 +140,39 @@ export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
   amountUSD > TRANSACTION_USD_LIMIT &&
   BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
-export const promiseTx = (isWalletConnected, tx, signer) => {
+// export const promiseTx = (isWalletConnected, tx, signer) => {
+//   if (!isWalletConnected) {
+//     return Promise.reject(new Error("Metamask not connected!"));
+//   }
+//   if (!signer) {
+//     return Promise.reject(new Error("Couldn't get Signer"));
+//   }
+//   return signer.sendTransaction(tx);
+// };
+export const promiseTx = async (isWalletConnected, tx, signer) => {
   if (!isWalletConnected) {
-    return Promise.reject(new Error("Metamask not connected!"));
+    throw new Error("Metamask not connected!");
   }
   if (!signer) {
-    return Promise.reject(new Error("Couldn't get Signer"));
+    throw new Error("Couldn't get Signer");
   }
   return signer.sendTransaction(tx);
 };
 
-export const verifyTx = (web3, hash) => {
-  return new Promise((res) => {
-    setTimeout(() => {
-      web3.eth
-        .getTransactionReceipt(hash)
-        .then((receipt) => res(receipt.status));
+// export const verifyTx = (web3, hash) => {
+//   return new Promise((res) => {
+//     setTimeout(() => {
+//       web3.eth
+//         .getTransactionReceipt(hash)
+//         .then((receipt) => res(receipt.status));
+//     }, CONFIRMATION_WAIT_PERIOD);
+//   });
+// };
+export const verifyTx = async (provider, hash) => {
+  return new Promise((resolve) => {
+    setTimeout(async () => {
+      const receipt = await provider.getTransactionReceipt(hash);
+      resolve(receipt.status);
     }, CONFIRMATION_WAIT_PERIOD);
   });
 };
@@ -188,17 +227,28 @@ export const appendFees = (amountBC, treasuryFee, fee, fee_UI) => {
  * @param {*} djed Djed contract
  * @returns Treasury and platform fee
  */
+// export const getFees = async (djed) => {
+//   try {
+//     const [treasuryFee, fee] = await Promise.all([
+//       web3Promise(djed, "treasuryFee"),
+//       web3Promise(djed, "fee"),
+//     ]);
+//     return {
+//       treasuryFee,
+//       fee,
+//     };
+//   } catch (error) {
+//     console.log("error", error);
+//   }
+// };
 export const getFees = async (djed) => {
   try {
     const [treasuryFee, fee] = await Promise.all([
-      web3Promise(djed, "treasuryFee"),
-      web3Promise(djed, "fee"),
+      ethersPromise(djed, "treasuryFee"),
+      ethersPromise(djed, "fee"),
     ]);
-    return {
-      treasuryFee,
-      fee,
-    };
+    return { treasuryFee, fee };
   } catch (error) {
-    console.log("error", error);
+    console.error("Error fetching fees:", error);
   }
 };
