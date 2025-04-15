@@ -47,8 +47,7 @@
 <p align="center">
   <strong>
   StablePay is an open-source SDK <br />
-  empowering websites to accept cryptocurrency payments, <br /> 
-  powered by Djed-based stablecoins.
+  empowering you to accept cryptocurrency and stablecoin payments. <br /> 
   </strong>
 </p>
 
