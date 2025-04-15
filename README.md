@@ -58,7 +58,7 @@
 <details>
   <summary>Table of Contents</summary>
   <ul>
-    <li><a href="#getting-started"> ➤ Getting Started</a></li>
+    <li><a href="#about-stablepay"> ➤ About StablePay</a></li>
     <!-- Don't delete it -->
     <li>
       <a href="#djed-sdk"> ➤ Djed SDK</a>
@@ -67,7 +67,7 @@
       </ul>
     </li>
     <li>
-      <a href="#stablepay-component"> ➤ StablePay Component</a>
+      <a href="#react-component"> ➤ React Component</a>
       <ul>
         <li><a href="#stablepay-component-code-overview"> ➤ Code Overview</a></li>
       </ul>
@@ -78,9 +78,11 @@
 </details>
 
 <!-- Project Description (Start from here) -->
-## **Getting Started**
+## **About StablePay**
 
-TODO
+StablePay is a fully decentralized solution for online payments.
+
+
 
 ## **Djed SDK**
 
@@ -93,7 +95,7 @@ TODO
 <!-- Use Back Button after each section -->
 <div align="right"><kbd><a href="#readme-top">↑ Back to top ↑</a></kbd></div>
 
-## **StablePay Component**
+## **React Component**
 
 TODO
 
