@@ -3,7 +3,7 @@
 
 <!-- Organization Logo -->
 <div align="center">
-  <img alt="StablePay" src="logo.png" width="175">
+  <img alt="StablePay" src="public/readme-assets/logo.png" width="175">
 </div>
 
 &nbsp;
