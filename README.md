@@ -11,7 +11,7 @@
 <!-- Organization Name -->
 <div align="center">
 
-[![Static Badge](https://img.shields.io/badge/Stable-Pay-228B22?style=for-the-badge&labelColor=FFC517)](https://stability.nexus/)
+[![Static Badge](https://img.shields.io/badge/Stable-Pay-D27728?style=for-the-badge&labelColor=F7941D)](https://stability.nexus/)
 
 </div>
 
