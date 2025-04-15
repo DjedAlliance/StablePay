@@ -46,7 +46,7 @@
 <!-- Project core values and objective -->
 <p align="center">
   <strong>
-  StablePay is a React component allowing anyone to accept cryptocurrency payments in their websites, powered by Djed-based stablecoins.
+  StablePay is a React component allowing anyone to accept cryptocurrency payments in their websites, <br /> powered by Djed-based stablecoins.
   </strong>
 </p>
 
