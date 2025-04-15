@@ -110,5 +110,5 @@ TODO
 <!-- Don't delete it -->
 <!-- Funding Badge -->
 <div align="center" name="fund">
-<a href="https://docs.stability.nexus/about-us/fund-us"><img src="public/readme-assets/fund-badge.svg" alt="Fund Stability Nexus Badge"/></a>
+<a href="https://docs.stability.nexus/about-us/fund-us">Fund This Project</a>
 </div>
