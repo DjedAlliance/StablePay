@@ -1,6 +1,14 @@
-export function web3Promise(contract, method, ...args) {
-  return contract.methods[method](...args).call();
+// export function web3Promise(contract, method, ...args) {
+//   return contract.methods[method](...args).call();
+// }
+
+import { ethers } from "ethers";
+
+// Function to call a contract method and return a promise
+export async function ethersPromise(contract, method, ...args) {
+  return await contract[method](...args);
 }
+
 // Function to build a transaction
 // Set gas limit to 500,000 by default
 export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
@@ -15,10 +23,17 @@ export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
   }
   return tx;
 }
-export function convertInt(promise) {
-  return promise.then((value) => parseInt(value));
+// export function convertInt(promise) {
+//   return promise.then((value) => parseInt(value));
+// }
+export async function convertInt(promise) {
+  const value = await promise;
+  return parseInt(value);
 }
 
+// export function reverseString(s) {
+//   return s.split("").reverse().join("");
+// }
 export function reverseString(s) {
   return s.split("").reverse().join("");
 }
@@ -77,15 +92,23 @@ export function decimalUnscaling(scaledString, decimals) {
   return s;
 }
 
-export function scaledPromise(promise, scaling) {
-  return promise.then((value) => decimalScaling(value.toString(10), scaling));
+// export function scaledPromise(promise, scaling) {
+//   return promise.then((value) => decimalScaling(value.toString(10), scaling));
+// }
+export async function scaledPromise(promise, scaling) {
+  const value = await promise;
+  return decimalScaling(value.toString(), scaling);
 }
 
-export function scaledUnscaledPromise(promise, scaling) {
-  return promise.then((value) => [
-    decimalScaling(value.toString(10), scaling),
-    value,
-  ]);
+// export function scaledUnscaledPromise(promise, scaling) {
+//   return promise.then((value) => [
+//     decimalScaling(value.toString(10), scaling),
+//     value,
+//   ]);
+// }
+export async function scaledUnscaledPromise(promise, scaling) {
+  const value = await promise;
+  return [decimalScaling(value.toString(), scaling), value];
 }
 
 export function percentageScale(value, scaling, showSymbol = false) {
@@ -96,9 +119,15 @@ export function percentageScale(value, scaling, showSymbol = false) {
   return calculatedValue;
 }
 
-export function percentScaledPromise(promise, scaling) {
-  return promise.then((value) => percentageScale(value, scaling, true));
+// export function percentScaledPromise(promise, scaling) {
+//   return promise.then((value) => percentageScale(value, scaling, true));
+// }
+
+export async function percentScaledPromise(promise, scaling) {
+  const value = await promise;
+  return percentageScale(value, scaling, true);
 }
+
 // currency conversions:
 export function calculateBcUsdEquivalent(coinsDetails, amountFloat) {
   const adaPerUsd = parseFloat(
