@@ -82,9 +82,9 @@ The main files of the Djed SDK and their purposes are:
 * [djed/reserveCoin.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/stableCoin.js) - contains functions to build transations that buy and sell reservecoins.
 * [djed/djed.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/djed.js) - contains functions to connect to the Djed contracts and to the ERC20 contracts for the stablecoins and reservecoins.
 * [djed/system.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/system.js) - contains functions to fetch the parameters and state variables of the Djed contracts and of the user.
-* [oracle/oracle.js] - contains functions to connect to the oracle contract used by a Djed contract.
+* [oracle/oracle.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/oracle/oracle.js) - contains functions to connect to the oracle contract used by a Djed contract.
 * [constants.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/constants.js) - contains configuration constants.
-* [web3.js] - handles wallet connection.
+* [web3.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/web3.js) - handles wallet connection.
 
 
 ## **Using the StablePay Widget**
