@@ -48,47 +48,34 @@
 <!-- Project core values and objective -->
 <p align="center">
   <strong>
-  StablePay is an open-source SDK <br />
+  An open-source SDK <br />
   empowering you to directly accept <br />
-  cryptocurrency and stablecoin payments. <br /> 
+  cryptocurrency and stablecoin payments
+  free from centralized fintech infrastructure  <br /> 
   </strong>
 </p>
 
 ---
 
-<!-- Table of Contents -->
-<details>
-  <summary>Table of Contents</summary>
-  <ul>
-    <li><a href="#about-stablepay"> ➤ About StablePay</a></li>
-    <!-- Don't delete it -->
-    <li>
-      <a href="#djed-sdk"> ➤ Djed SDK</a>
-      <ul>
-        <li><a href="#djed-sdk-code-overview"> ➤ Code Overview</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#react-component"> ➤ React Component</a>
-      <ul>
-        <li><a href="#stablepay-component-code-overview"> ➤ Code Overview</a></li>
-      </ul>
-    </li>
-    
-    <li><a href="#fund"> ➤ Fund Stability Nexus</a></li>
-  </ul>
-</details>
-
 <!-- Project Description (Start from here) -->
 ## **About StablePay**
 
-StablePay is a fully decentralized solution for online payments.
+StablePay is a fully decentralized solution for online payments. 
+When the StablePay widget is embedded in a website, the widget interacts 
+directly with smart contracts on blockchains, with no intermediary servers.
 
+StablePay allows payments to be made either via the native cryptocurrency 
+of the underlying blockchain or via decentralized stablecoins backed by these native currencies.
+StablePay also allows automatic conversion between the two. For example, a consumer may pay using 
+a native cryptocurrency, but the merchant receives the payment in a stablecoin backed by that cryptocurrency.
+The conversion happens automatically, by interacting with the stablecoin contract to mint stablecoins.
+
+Currently, stablecoins based on the [Djed stablecoin protocol](https://djed.one) deployed on EVM-compatible chains are supported.
 
 
 ## **Djed SDK**
 
-TODO
+StablePay makes use of the Djed SDK to interact with Djed stablecoin contracts.
 
 ### **Djed SDK Code Overview** <br />
 
