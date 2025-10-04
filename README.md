@@ -3,9 +3,9 @@
 
 <!-- Organization Logo -->
 <div align="center">
-  <img alt="StabilityNexus" src="public/readme-assets/stability-nexus.svg" width="175">
+  <img alt="StabilityNexus" src="public/readme-assets/StabilityNexus.svg" width="175">
   <img alt="DjedAlliance" src="public/readme-assets/djed-alliance.png" width="175">
-  <img alt="StablePay" src="public/readme-assets/stablepay.svg" width="175" />
+  <img alt="StablePay" src="public/readme-assets/StablePay.svg" width="175" />
 </div>
 
 &nbsp;
