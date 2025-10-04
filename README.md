@@ -58,7 +58,6 @@
 ---
 
 <!-- Project Description (Start from here) -->
-## **About StablePay**
 
 StablePay is a fully decentralized solution for online payments. 
 When the StablePay widget is embedded in a website, the widget interacts 
@@ -73,25 +72,24 @@ The conversion happens automatically, by interacting with the stablecoin contrac
 Currently, stablecoins based on the [Djed stablecoin protocol](https://djed.one) deployed on EVM-compatible chains are supported.
 
 
-## **Djed SDK**
+## **Code Structure Overview**
 
-StablePay makes use of the Djed SDK to interact with Djed stablecoin contracts.
+The StablePay widget itself is located in the [stablepay-sdk folder](https://github.com/DjedAlliance/StablePay/tree/main/stablepay-sdk). It makes use of the Djed SDK to interact with Djed stablecoin contracts. The Djed SDK is located in the [djed-sdk folder](https://github.com/DjedAlliance/StablePay/tree/main/djed-sdk). 
 
-### **Djed SDK Code Overview** <br />
+The main files of the Djed SDK and their purposes are:
 
-TODO
+* [djed/stableCoin.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/stableCoin.js) - contains functions to build transations that buy and sell stablecoins.
+* [djed/reserveCoin.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/stableCoin.js) - contains functions to build transations that buy and sell reservecoins.
+* [djed/djed.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/djed.js) - contains functions to connect to the Djed contracts and to the ERC20 contracts for the stablecoins and reservecoins.
+* [djed/system.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/system.js) - contains functions to fetch the parameters and state variables of the Djed contracts and of the user.
+* [oracle/oracle.js] - contains functions to connect to the oracle contract used by a Djed contract.
+* [constants.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/constants.js) - contains configuration constants.
+* [web3.js] - handles wallet connection.
 
-<!-- Use Back Button after each section -->
-<div align="right"><kbd><a href="#readme-top">↑ Back to top ↑</a></kbd></div>
 
-## **React Component**
+## **Using the StablePay Widget**
 
-TODO
-
-
-### **StablePay Component Code Overview** <br />
-
-TODO
+A simple example merchant website with the StablePay widget embedded is available in the [StablePay-MerchantWebsiteDemo](https://github.com/DjedAlliance/StablePay-MerchantWebsiteDemo).
 
 
 
