@@ -76,18 +76,26 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
 };
 
 // Function to allow User 1 (payer) to pay and User 2 (receiver) to receive stablecoins
-export const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
-  // `receiver` will get the stablecoins
-  const data = djed.methods.buyStableCoins(receiver, FEE_UI_UNSCALED, UI).encodeABI();
+// export const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
+//   // `receiver` will get the stablecoins
+//   const data = djed.methods.buyStableCoins(receiver, FEE_UI_UNSCALED, UI).encodeABI();
   
-  // `payer` is sending the funds
+//   // `payer` is sending the funds
+//   return buildTx(payer, DJED_ADDRESS, value, data);
+// };
+export const buyScTx = async (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
+  const data = djed.interface.encodeFunctionData("buyStableCoins", [receiver, FEE_UI_UNSCALED, UI]);
   return buildTx(payer, DJED_ADDRESS, value, data);
 };
 
-export const sellScTx = (djed, account, amount, UI, DJED_ADDRESS) => {
-  const data = djed.methods
-    .sellStableCoins(amount, account, FEE_UI_UNSCALED, UI)
-    .encodeABI();
+// export const sellScTx = (djed, account, amount, UI, DJED_ADDRESS) => {
+//   const data = djed.methods
+//     .sellStableCoins(amount, account, FEE_UI_UNSCALED, UI)
+//     .encodeABI();
+//   return buildTx(account, DJED_ADDRESS, 0, data);
+// };
+export const sellScTx = async (djed, account, amount, UI, DJED_ADDRESS) => {
+  const data = djed.interface.encodeFunctionData("sellStableCoins", [amount, account, FEE_UI_UNSCALED, UI]);
   return buildTx(account, DJED_ADDRESS, 0, data);
 };
 
@@ -101,6 +109,37 @@ export const sellScTx = (djed, account, amount, UI, DJED_ADDRESS) => {
  * @param scDecimalScalingFactor - If stablecoin has 6 decimals, scDecimalScalingFactor will be calculated as 10^6
  * @returns future stablecoin price
  */
+// export const calculateFutureScPrice = async ({
+//   amountBC,
+//   amountSC,
+//   djedContract,
+//   oracleContract,
+//   stableCoinContract,
+//   scDecimalScalingFactor,
+// }) => {
+//   try {
+//     const [scTargetPrice, scSupply, ratio] = await Promise.all([
+//       web3Promise(oracleContract, "readData"),
+//       web3Promise(stableCoinContract, "totalSupply"),
+//       web3Promise(djedContract, "R", 0),
+//     ]);
+
+//     const futureScSupply = BigInt(scSupply) + BigInt(amountSC);
+//     const futureRatio = BigInt(ratio) + BigInt(amountBC);
+
+//     if (futureScSupply === 0n) {
+//       return scTargetPrice;
+//     } else {
+//       const futurePrice =
+//         (futureRatio * BigInt(scDecimalScalingFactor)) / futureScSupply;
+//       return BigInt(scTargetPrice) < futurePrice
+//         ? scTargetPrice
+//         : futurePrice.toString();
+//     }
+//   } catch (error) {
+//     console.log("calculateFutureScPrice error ", error);
+//   }
+// };
 export const calculateFutureScPrice = async ({
   amountBC,
   amountSC,
@@ -111,9 +150,9 @@ export const calculateFutureScPrice = async ({
 }) => {
   try {
     const [scTargetPrice, scSupply, ratio] = await Promise.all([
-      web3Promise(oracleContract, "readData"),
-      web3Promise(stableCoinContract, "totalSupply"),
-      web3Promise(djedContract, "R", 0),
+      oracleContract.readData(),
+      stableCoinContract.totalSupply(),
+      djedContract.R(0),
     ]);
 
     const futureScSupply = BigInt(scSupply) + BigInt(amountSC);
@@ -122,13 +161,10 @@ export const calculateFutureScPrice = async ({
     if (futureScSupply === 0n) {
       return scTargetPrice;
     } else {
-      const futurePrice =
-        (futureRatio * BigInt(scDecimalScalingFactor)) / futureScSupply;
-      return BigInt(scTargetPrice) < futurePrice
-        ? scTargetPrice
-        : futurePrice.toString();
+      const futurePrice = (futureRatio * BigInt(scDecimalScalingFactor)) / futureScSupply;
+      return BigInt(scTargetPrice) < futurePrice ? scTargetPrice : futurePrice.toString();
     }
   } catch (error) {
-    console.log("calculateFutureScPrice error ", error);
+    console.error("calculateFutureScPrice error", error);
   }
 };

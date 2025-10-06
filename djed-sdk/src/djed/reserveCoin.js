@@ -70,16 +70,34 @@ export const tradeDataPriceSellRc = async (djed, rcDecimals, amountScaled) => {
   }
 };
 
-export const buyRcTx = (djed, account, value, UI, DJED_ADDRESS) => {
-  const data = djed.methods
-    .buyReserveCoins(account, FEE_UI_UNSCALED, UI)
-    .encodeABI();
-  return buildTx(account, DJED_ADDRESS, value, data);
+// export const buyRcTx = (djed, account, value, UI, DJED_ADDRESS) => {
+//   const data = djed.methods
+//     .buyReserveCoins(account, FEE_UI_UNSCALED, UI)
+//     .encodeABI();
+//   return buildTx(account, DJED_ADDRESS, value, data);
+// };
+export const buyRcTx = async (djed, signer, account, value, UI) => {
+  try {
+    const tx = await djed.connect(signer).buyReserveCoins(account, FEE_UI_UNSCALED, UI, {
+      value, 
+    });
+    return tx;
+  } catch (error) {
+    console.error("Error in buyRcTx:", error);
+  }
 };
 
-export const sellRcTx = (djed, account, amount, UI, DJED_ADDRESS) => {
-  const data = djed.methods
-    .sellReserveCoins(amount, account, FEE_UI_UNSCALED, UI)
-    .encodeABI();
-  return buildTx(account, DJED_ADDRESS, 0, data);
+// export const sellRcTx = (djed, account, amount, UI, DJED_ADDRESS) => {
+//   const data = djed.methods
+//     .sellReserveCoins(amount, account, FEE_UI_UNSCALED, UI)
+//     .encodeABI();
+//   return buildTx(account, DJED_ADDRESS, 0, data);
+// };
+export const sellRcTx = async (djed, signer, account, amount, UI) => {
+  try {
+    const tx = await djed.connect(signer).sellReserveCoins(amount, account, FEE_UI_UNSCALED, UI);
+    return tx;
+  } catch (error) {
+    console.error("Error in sellRcTx:", error);
+  }
 };
