@@ -9,10 +9,10 @@ import { WalletProvider } from "../contexts/WalletContext";
 import styles from "../styles/PricingCard.css";
 
 const WidgetContent = ({ onClose, buttonSize }) => {
-  const { resetSelections } = useNetwork(); //
+  const { resetSelections } = useNetwork(); 
 
   const handleClose = () => {
-    resetSelections();
+    resetSelections(); // Reset selections when closing the widget
     onClose();
   };
 
@@ -28,7 +28,7 @@ const WidgetContent = ({ onClose, buttonSize }) => {
 const WidgetWithProviders = ({ onClose, buttonSize, networkSelector }) => {
   return (
     <NetworkProvider networkSelector={networkSelector}>
-      <WalletProvider>
+      <WalletProvider> 
         <WidgetContent onClose={onClose} buttonSize={buttonSize} />
       </WalletProvider>
     </NetworkProvider>

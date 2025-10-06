@@ -1,65 +1,31 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
-import { createWalletClient, custom } from "viem";
-import { sepolia, mainnet } from "viem/chains";
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createWalletClient, createPublicClient, custom, http } from 'viem';
+import { mordor } from './chains';
 
 const WalletContext = createContext(null);
 
 export const useWallet = () => {
   const context = useContext(WalletContext);
   if (!context) {
-    throw new Error("useWallet must be used within a WalletProvider");
+    throw new Error('useWallet must be used within a WalletProvider');
   }
   return context;
 };
 
-export const WalletProvider = ({ children, networkConfig }) => {
+export const WalletProvider = ({ children }) => {
   const [walletClient, setWalletClient] = useState(null);
+  const [publicClient, setPublicClient] = useState(null);
   const [account, setAccount] = useState(null);
   const [chainId, setChainId] = useState(null);
+  const [balance, setBalance] = useState(null);
   const [error, setError] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [networkError, setNetworkError] = useState(null);
 
-  const getChainConfig = (chainId) => {
-    const chains = {
-      1: mainnet,
-      11155111: sepolia,
-      //to-do:add more chains here
-    };
-    return chains[chainId];
-  };
-
-  const checkNetwork = async (currentChainId) => {
-    const expectedChainId = getExpectedChainId();
-
-    if (currentChainId !== expectedChainId) {
-      const errorMsg = `Wrong network detected. Please switch to ${getNetworkName(
-        expectedChainId
-      )}`;
-      console.log(errorMsg);
-      setNetworkError(errorMsg);
-      return false;
-    }
-
-    setNetworkError(null);
-    return true;
-  };
-
-  const getExpectedChainId = () => {
-    return 11155111;
-  };
-
-  const getNetworkName = (chainId) => {
-    const networks = {
-      1: "Ethereum Mainnet",
-      11155111: "Sepolia Testnet",
-    };
-    return networks[chainId] || "Unknown Network";
-  };
+  const expectedChainId = mordor.id; // Use Mordor Testnet
 
   const connectWallet = useCallback(async () => {
     if (!window.ethereum) {
-      setError("Please install MetaMask or another Web3 wallet");
+      setError('Please install MetaMask or another Web3 wallet');
       return false;
     }
 
@@ -67,37 +33,37 @@ export const WalletProvider = ({ children, networkConfig }) => {
     setError(null);
 
     try {
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-
-      const chainIdHex = await window.ethereum.request({
-        method: "eth_chainId",
-      });
-      const currentChainId = parseInt(chainIdHex, 16);
-
-      await checkNetwork(currentChainId);
-
-      const chain = getChainConfig(currentChainId);
-      if (!chain) {
-        throw new Error("Unsupported chain");
-      }
-
-      const client = createWalletClient({
-        chain,
+      const walletClient = createWalletClient({
+        chain: mordor,
         transport: custom(window.ethereum),
       });
 
-      setWalletClient(client);
-      setAccount(accounts[0]);
+      const addresses = await walletClient.getAddresses();
+      if (addresses.length === 0) {
+        throw new Error('No wallet address found.');
+      }
+
+      const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+      const currentChainId = parseInt(chainIdHex, 16);
+
+      if (currentChainId !== expectedChainId) {
+        throw new Error(`Wrong network detected. Please switch to Mordor Testnet`);
+      }
+
+      setWalletClient(walletClient);
+      setAccount(addresses[0]);
       setChainId(currentChainId);
 
-      window.ethereum.on("accountsChanged", handleAccountsChanged);
-      window.ethereum.on("chainChanged", handleChainChanged);
+      const publicClient = createPublicClient({ chain: mordor, transport: http() });
+      const balance = await publicClient.getBalance({ address: addresses[0] });
+      setBalance(parseFloat(balance) / Math.pow(10, 18));
+
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
 
       return true;
     } catch (err) {
-      console.error("Error connecting wallet:", err);
+      console.error('Error connecting wallet:', err);
       setError(err.message);
       return false;
     } finally {
@@ -105,19 +71,34 @@ export const WalletProvider = ({ children, networkConfig }) => {
     }
   }, []);
 
+  const connectPublicClient = useCallback(() => {
+    setPublicClient(createPublicClient({ chain: mordor, transport: http() }));
+  }, []);
+
   const handleChainChanged = async (chainIdHex) => {
     const newChainId = parseInt(chainIdHex, 16);
     setChainId(newChainId);
 
-    await checkNetwork(newChainId);
+    if (newChainId !== expectedChainId) {
+      setError(`Wrong network detected. Please switch to Mordor Testnet`);
+      return;
+    }
 
-    const chain = getChainConfig(newChainId);
-    if (chain && window.ethereum) {
-      const client = createWalletClient({
-        chain,
-        transport: custom(window.ethereum),
-      });
-      setWalletClient(client);
+    if (window.ethereum) {
+      const walletClient = createWalletClient({ chain: mordor, transport: custom(window.ethereum) });
+      setWalletClient(walletClient);
+    }
+  };
+
+  const handleAccountsChanged = async (accounts) => {
+    if (accounts.length === 0) {
+      disconnectWallet();
+    } else {
+      setAccount(accounts[0]);
+
+      const publicClient = createPublicClient({ chain: mordor, transport: http() });
+      const balance = await publicClient.getBalance({ address: accounts[0] });
+      setBalance(parseFloat(balance) / Math.pow(10, 18));
     }
   };
 
@@ -125,34 +106,30 @@ export const WalletProvider = ({ children, networkConfig }) => {
     setWalletClient(null);
     setAccount(null);
     setChainId(null);
-    setNetworkError(null);
+    setBalance(null);
 
     if (window.ethereum) {
-      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
-      window.ethereum.removeListener("chainChanged", handleChainChanged);
+      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      window.ethereum.removeListener('chainChanged', handleChainChanged);
     }
   }, []);
 
-  const handleAccountsChanged = (accounts) => {
-    if (accounts.length === 0) {
-      disconnectWallet();
-    } else {
-      setAccount(accounts[0]);
-    }
-  };
+  useEffect(() => {
+    connectPublicClient();
+  }, [connectPublicClient]);
 
   return (
     <WalletContext.Provider
       value={{
         walletClient,
+        publicClient,
         account,
         chainId,
+        balance,
         error,
-        networkError,
         isConnecting,
         connectWallet,
         disconnectWallet,
-        checkNetwork,
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-import { getWeb3, getDjedContract, getCoinContracts, getDecimals,getOracleAddress,getOracleContract,tradeDataPriceBuySc } from 'djed-sdk';
+import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx } from 'djed-sdk';
 
 export class Transaction {
   constructor(networkUri, djedAddress) {
@@ -57,9 +57,31 @@ export class Transaction {
     }
     try {
       const result = await tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
-      return result.totalBCScaled;
+      return result.totalBCScaled; //converted ETH equivalent
     } catch (error) {
       console.error("Error fetching trade data for buying stablecoins: ", error);
+      throw error;
+    }
+  }
+
+  // use buyScTx directly
+  async buyStablecoins(payer, receiver, value) {
+    if (!this.djedContract) {
+      throw new Error("DJED contract is not initialized");
+    }
+    try {
+      console.log(`Building stablecoin purchase transaction from ${payer} to ${receiver} with value ${value}`);
+
+      //Hardcoded UI address
+      const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
+
+      //buyScTx from djed-sdk
+      const txData = await buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
+
+      console.log("Transaction built:", txData);
+      return txData;
+    } catch (error) {
+      console.error("Error executing buyStablecoins transaction: ", error);
       throw error;
     }
   }

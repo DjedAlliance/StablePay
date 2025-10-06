@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNetwork } from "../contexts/NetworkContext";
 import { useWallet } from "../contexts/WalletContext";
 import { Transaction } from "../core/Transaction";
+import { parseEther, encodeFunctionData, parseUnits } from "viem"; 
 import styles from "../styles/PricingCard.css";
+
+const STABLECOIN_CONTRACT_ADDRESS = "0xdc86935A9597aA3A9008d2f26232233043091284"; 
 
 const TransactionReview = () => {
   const {
     networkSelector,
-    tokenSelector,
     selectedNetwork,
     selectedToken,
     transactionDetails: contextTransactionDetails,
@@ -17,95 +19,66 @@ const TransactionReview = () => {
   const {
     connectWallet,
     account,
-    chainId,
-    error: walletError,
-    networkError,
+    walletClient,
+    publicClient,
     isConnecting,
   } = useWallet();
 
-  //  using Local transaction states here
   const [transaction, setTransaction] = useState(null);
   const [tradeDataBuySc, setTradeDataBuySc] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [txData, setTxData] = useState(null);
+  const [message, setMessage] = useState("");
+  const [txHash, setTxHash] = useState(null);
 
   useEffect(() => {
     const initializeTransaction = async () => {
-      if (selectedNetwork && selectedToken) {
-        setLoading(true);
-        setError(null);
-        try {
-          const networkConfig = networkSelector.getSelectedNetworkConfig();
-          const receivingAddress = networkSelector.getReceivingAddress();
-          const tokenAmount = networkSelector.getTokenAmount(selectedToken.key);
+      if (!selectedNetwork || !selectedToken) return;
 
-          console.log("Selected Token Key:", selectedToken.key);
-          console.log("Token Amount:", tokenAmount);
+      try {
+        const networkConfig = networkSelector.getSelectedNetworkConfig();
+        const receivingAddress = networkSelector.getReceivingAddress();
+        const tokenAmount = networkSelector.getTokenAmount(selectedToken.key);
 
-          const newTransaction = new Transaction(
-            networkConfig.uri,
-            networkConfig.djedAddress
-          );
-          await newTransaction.init();
-          setTransaction(newTransaction);
+        const newTransaction = new Transaction(
+          networkConfig.uri,
+          networkConfig.djedAddress
+        );
+        await newTransaction.init();
+        setTransaction(newTransaction);
 
-          const blockchainDetails = newTransaction.getBlockchainDetails();
-
-          console.log("Blockchain Details:", blockchainDetails);
-
-          // native token = fetch trade data asap
-          let tradeData = null;
-          if (selectedToken.key === "native") {
-            console.log("Fetching trade data for native token");
-            try {
-              const amountString = String(tokenAmount);
-              tradeData = await newTransaction.handleTradeDataBuySc(
-                amountString
-              );
-              console.log("Trade data fetched:", tradeData);
-              setTradeDataBuySc(tradeData);
-            } catch (tradeError) {
-              console.error("Error fetching trade data:", tradeError);
-            }
-          } else {
-            console.log("Stablecoin selected, skipping trade data fetch");
+        let tradeData = null;
+        if (selectedToken.key === "native") {
+          try {
+            tradeData = await newTransaction.handleTradeDataBuySc(String(tokenAmount));
+            setTradeDataBuySc(tradeData);
+          } catch (tradeError) {
+            console.error("Error fetching trade data:", tradeError);
           }
-
-          console.log("Debug Information:", {
-            tokenType: selectedToken.key,
-            isDirectTransfer: selectedToken.isDirectTransfer,
-            isNativeToken: selectedToken.isNative,
-            tradeData: tradeData,
-            receivingAddress: receivingAddress,
-            djedContractAddress: networkConfig.djedAddress,
-            blockchainDetails: blockchainDetails,
-          });
-
-          const details = {
-            network: selectedNetwork,
-            token: selectedToken.key,
-            tokenSymbol: selectedToken.symbol,
-            amount: tokenAmount,
-            receivingAddress: receivingAddress,
-            djedContractAddress: networkConfig.djedAddress,
-            isDirectTransfer: selectedToken.isDirectTransfer || false,
-            isNativeToken: selectedToken.isNative || false,
-            tradeAmount: tradeData ? tradeData.amount : null,
-            ...blockchainDetails,
-          };
-
-          setTransactionDetails(details);
-        } catch (err) {
-          console.error("Error initializing transaction:", err);
-          setError("Failed to initialize transaction. Please try again.");
-        } finally {
-          setLoading(false);
         }
+
+        setTransactionDetails({
+          network: selectedNetwork,
+          token: selectedToken.key,
+          tokenSymbol: selectedToken.symbol,
+          amount: tokenAmount || "0",
+          receivingAddress,
+          djedContractAddress: networkConfig.djedAddress,
+          isDirectTransfer: selectedToken.isDirectTransfer || false,
+          isNativeToken: selectedToken.isNative || false,
+          tradeAmount: tradeData ? tradeData.amount : null,
+          ...newTransaction.getBlockchainDetails(),
+        });
+      } catch (err) {
+        console.error("Error initializing transaction:", err);
       }
     };
 
     initializeTransaction();
   }, [selectedNetwork, selectedToken, networkSelector, setTransactionDetails]);
+
+  if (!contextTransactionDetails) {
+    return <div className={styles.loading}>Initializing transaction...</div>;
+  }
 
   const handleConnectWallet = async () => {
     const success = await connectWallet();
@@ -114,29 +87,107 @@ const TransactionReview = () => {
     }
   };
 
-  if (loading) {
-    return <div className={styles.loading}>Loading transaction details...</div>;
-  }
+  const handleSendTransaction = async () => {
+    if (!account || !contextTransactionDetails || !transaction) {
+      setMessage("❌ Wallet not connected or transaction details missing");
+      return;
+    }
 
-  if (error) {
-    return <div className={styles.error}>{error}</div>;
-  }
+    try {
+      setMessage("⏳ Preparing transaction...");
 
-  if (!selectedNetwork || !selectedToken || !contextTransactionDetails) {
-    return null;
-  }
+      const receiver = contextTransactionDetails.receivingAddress;
+      let builtTx;
+
+      if (selectedToken.key === "native") {
+        const UI = "0x0232556C83791b8291E9b23BfEa7d67405Bd9839";
+        const amountToSend = tradeDataBuySc || "0";
+
+        builtTx = await transaction.buyStablecoins(
+          account,
+          receiver,
+          parseEther(String(amountToSend)),
+          UI
+        );
+      } else {
+        const amountToSend = contextTransactionDetails.amount
+          ? parseUnits(
+              String(contextTransactionDetails.amount),
+              contextTransactionDetails.stableCoinDecimals
+            )
+          : "0";
+
+        builtTx = {
+          to: STABLECOIN_CONTRACT_ADDRESS,
+          data: encodeFunctionData({
+            abi: [
+              {
+                inputs: [
+                  { internalType: "address", name: "to", type: "address" },
+                  { internalType: "uint256", name: "amount", type: "uint256" },
+                ],
+                name: "transfer",
+                outputs: [{ internalType: "bool", name: "", type: "bool" }],
+                stateMutability: "nonpayable",
+                type: "function",
+              },
+            ],
+            functionName: "transfer",
+            args: [receiver, amountToSend],
+          }),
+          account: account,
+        };
+      }
+
+      setTxData(builtTx);
+      setMessage("✅ Transaction ready! Click 'Send Transaction' to proceed.");
+    } catch (error) {
+      setMessage(`❌ Transaction preparation failed: ${error.message}`);
+    }
+  };
+
+  const handleBuySc = async () => {
+    try {
+      if (!walletClient || !account || !txData) {
+        setMessage("❌ Wallet client, account, or transaction data is missing");
+        return;
+      }
+
+      setMessage("⏳ Sending transaction...");
+
+      const txHash = await walletClient.sendTransaction({
+        ...txData,
+        account: account,
+      });
+
+      setTxHash(txHash);
+      setMessage(`✅ Transaction sent!`);
+    } catch (error) {
+      setMessage(`❌ Transaction failed: ${error.message}`);
+    }
+  };
+
+  const getExplorerUrl = () => {
+    if (!txHash || !selectedNetwork) return null;
+
+    const explorerBaseUrls = {
+      "ethereum-classic": "https://etc-mordor.blockscout.com/tx/",
+      "sepolia": "https://sepolia.etherscan.io/tx/",
+      "milkomeda-mainnet": "https://explorer-mainnet-cardano-evm.c1.milkomeda.com/tx/",
+    };
+
+    return explorerBaseUrls[selectedNetwork]
+      ? `${explorerBaseUrls[selectedNetwork]}${txHash}`
+      : null;
+  };
 
   return (
     <div className={styles.transactionReview}>
-      {/* Network Info */}
       <div className={styles.transactionInfo}>
         <span className={styles.transactionLabel}>Network:</span>
-        <span className={styles.transactionValue}>
-          {contextTransactionDetails.network}
-        </span>
+        <span className={styles.transactionValue}>{contextTransactionDetails.network}</span>
       </div>
 
-      {/* You Pay */}
       <div className={styles.transactionInfo}>
         <span className={styles.transactionLabel}>You Pay:</span>
         <span className={styles.transactionValue}>
@@ -148,27 +199,50 @@ const TransactionReview = () => {
         </span>
       </div>
 
-      {/* Merchant Receives */}
-      <div className={styles.transactionInfo}>
-        <span className={styles.transactionLabel}>Merchant Receives:</span>
-        <span className={styles.transactionValue}>
-          {`${contextTransactionDetails.amount} ${
-            selectedToken.key === "stablecoin"
-              ? contextTransactionDetails.tokenSymbol
-              : networkSelector.getSelectedNetworkConfig().tokens.stablecoin
-                  .symbol
-          }`}
-        </span>
-      </div>
-
-      {/* Wallet Button */}
-      <button
-        className={styles.walletButton}
-        onClick={handleConnectWallet}
-        disabled={isConnecting}
-      >
+      <button className={styles.walletButton} onClick={handleConnectWallet} disabled={isConnecting}>
         {isConnecting ? "Connecting..." : "Connect Wallet"}
       </button>
+
+      {account && !txData && (
+        <button className={styles.walletButton} onClick={handleSendTransaction}>
+          Prepare Transaction
+        </button>
+      )}
+      {account && txData && (
+  <button 
+    className={styles.walletButton} 
+    onClick={handleBuySc} 
+    disabled={txHash !== null} // Disable the button when txHash is set
+  >
+    Send Transaction
+  </button>
+)}
+
+
+      {message && <div className="message-box">{message}</div>}
+
+      
+      {txHash && (
+  <div className={styles.transactionLink}>
+    ✅ Transaction Hash:{" "}
+    <a
+      href={`https://blockscout.com/etc/mordor/tx/${txHash}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={styles.explorerLink}
+      style={{ 
+        color: "#007bff", 
+        textDecoration: "underline", 
+        fontWeight: "bold", 
+        cursor: "pointer",
+        wordBreak: "break-word" 
+      }}
+    >
+      {txHash.slice(0, 6)}...{txHash.slice(-6)}
+    </a>
+  </div>
+)}
+
     </div>
   );
 };
