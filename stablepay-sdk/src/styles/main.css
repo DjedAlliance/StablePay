@@ -2,10 +2,10 @@
   box-sizing: border-box;
   width: 372px;
   height: 104px;
-  background: linear-gradient(90deg, #000000 0%, #f7941d 100%);
-  border: 1px solid #bc5f26;
+  background: var(--sp-accent-primary);
+  border: 1px solid var(--sp-accent-secondary);
   border-radius: 3px;
-  color: #ffffff;
+  color: var(--sp-text-primary);
   font-size: 24px;
   font-weight: bold;
   cursor: pointer;
@@ -35,4 +35,117 @@
 .stablePayButton .buttonText {
   flex-grow: 1;
   text-align: center;
+}
+
+
+/* Wallet Selection Modal */
+.stablepay-wallet-selection .stablepay-wallet-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stablepay-wallet-selection .stablepay-wallet-button {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--sp-bg-secondary);
+  border: 1px solid var(--sp-border-primary);
+  color: var(--sp-text-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 16px;
+  transition: background-color 0.2s;
+}
+
+.stablepay-wallet-selection .stablepay-wallet-button:hover {
+  background-color: var(--sp-bg-tertiary);
+}
+
+.stablepay-wallet-selection .stablepay-wallet-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.stablepay-connecting-message {
+  text-align: center;
+  margin-top: 15px;
+  font-style: italic;
+  color: var(--sp-text-secondary);
+}
+
+.stablepay-error-message {
+  text-align: center;
+  margin-top: 15px;
+  color: var(--sp-error);
+}
+
+/* Transaction Fee Component */
+.stablepay-transaction-fee {
+  width: 100%;
+  margin: 20px 0;
+}
+
+.stablepay-fee-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sp-text-primary);
+  margin-bottom: 15px;
+}
+
+.stablepay-fee-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stablepay-fee-option {
+  padding: 10px;
+  border: 2px solid var(--sp-border-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.stablepay-fee-option:hover {
+  border-color: var(--sp-accent-secondary);
+}
+
+.stablepay-fee-option.selected {
+  border-color: var(--sp-accent-primary);
+  background-color: var(--sp-bg-secondary);
+}
+
+.stablepay-fee-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--sp-text-primary);
+}
+
+.stablepay-fee-gwei {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--sp-accent-primary);
+  margin: 5px 0;
+}
+
+.stablepay-fee-time {
+  font-size: 12px;
+  color: var(--sp-text-secondary);
+}
+
+.stablepay-fee-loading,
+.stablepay-fee-error {
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  color: var(--sp-text-secondary);
+}
+
+.stablepay-fee-error {
+  color: var(--sp-error);
 }

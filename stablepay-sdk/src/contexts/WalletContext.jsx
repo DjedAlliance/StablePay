@@ -1,160 +1,97 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
-import { createWalletClient, custom } from "viem";
-import { sepolia, mainnet } from "viem/chains";
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { WalletProvider as WalletProviderClass } from '../core/WalletProvider';
 
 const WalletContext = createContext(null);
 
+/**
+ * Custom hook to access the wallet context.
+ * @returns {{
+ *  client: object | null,
+ *  account: string | null,
+ *  error: string | null,
+ *  isConnecting: boolean,
+ *  isLoading: boolean,
+ *  connect: (walletName: string) => Promise<boolean>,
+ *  disconnect: () => Promise<void>,
+ *  getAvailableWallets: () => Array<{name: string, id: string}>
+ * }}
+ */
 export const useWallet = () => {
   const context = useContext(WalletContext);
   if (!context) {
-    throw new Error("useWallet must be used within a WalletProvider");
+    throw new Error('useWallet must be used within a WalletContextProvider');
   }
   return context;
 };
 
-export const WalletProvider = ({ children, networkConfig }) => {
-  const [walletClient, setWalletClient] = useState(null);
+/**
+ * Provider component for the wallet context.
+ * Manages wallet state and connection logic.
+ * @param {{children: React.ReactNode, chainId: number}} props
+ */
+export const WalletContextProvider = ({ children, chainId }) => {
+  const [walletProvider] = useState(() => new WalletProviderClass(chainId));
+  const [client, setClient] = useState(null);
   const [account, setAccount] = useState(null);
-  const [chainId, setChainId] = useState(null);
   const [error, setError] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [networkError, setNetworkError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // For initial session restoration
 
-  const getChainConfig = (chainId) => {
-    const chains = {
-      1: mainnet,
-      11155111: sepolia,
-      //to-do:add more chains here
-    };
-    return chains[chainId];
-  };
-
-  const checkNetwork = async (currentChainId) => {
-    const expectedChainId = getExpectedChainId();
-
-    if (currentChainId !== expectedChainId) {
-      const errorMsg = `Wrong network detected. Please switch to ${getNetworkName(
-        expectedChainId
-      )}`;
-      console.log(errorMsg);
-      setNetworkError(errorMsg);
-      return false;
-    }
-
-    setNetworkError(null);
-    return true;
-  };
-
-  const getExpectedChainId = () => {
-    return 11155111;
-  };
-
-  const getNetworkName = (chainId) => {
-    const networks = {
-      1: "Ethereum Mainnet",
-      11155111: "Sepolia Testnet",
-    };
-    return networks[chainId] || "Unknown Network";
-  };
-
-  const connectWallet = useCallback(async () => {
-    if (!window.ethereum) {
-      setError("Please install MetaMask or another Web3 wallet");
-      return false;
-    }
-
+  const connect = useCallback(async (walletName) => {
     setIsConnecting(true);
     setError(null);
-
     try {
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-
-      const chainIdHex = await window.ethereum.request({
-        method: "eth_chainId",
-      });
-      const currentChainId = parseInt(chainIdHex, 16);
-
-      await checkNetwork(currentChainId);
-
-      const chain = getChainConfig(currentChainId);
-      if (!chain) {
-        throw new Error("Unsupported chain");
-      }
-
-      const client = createWalletClient({
-        chain,
-        transport: custom(window.ethereum),
-      });
-
-      setWalletClient(client);
-      setAccount(accounts[0]);
-      setChainId(currentChainId);
-
-      window.ethereum.on("accountsChanged", handleAccountsChanged);
-      window.ethereum.on("chainChanged", handleChainChanged);
-
+      const { client: newClient, account: newAccount } = await walletProvider.connect(walletName);
+      setClient(newClient);
+      setAccount(newAccount);
       return true;
     } catch (err) {
-      console.error("Error connecting wallet:", err);
+      console.error(`Error connecting with ${walletName}:`, err);
       setError(err.message);
       return false;
     } finally {
       setIsConnecting(false);
     }
-  }, []);
+  }, [walletProvider]);
 
-  const handleChainChanged = async (chainIdHex) => {
-    const newChainId = parseInt(chainIdHex, 16);
-    setChainId(newChainId);
-
-    await checkNetwork(newChainId);
-
-    const chain = getChainConfig(newChainId);
-    if (chain && window.ethereum) {
-      const client = createWalletClient({
-        chain,
-        transport: custom(window.ethereum),
-      });
-      setWalletClient(client);
-    }
-  };
-
-  const disconnectWallet = useCallback(() => {
-    setWalletClient(null);
+  const disconnect = useCallback(async () => {
+    await walletProvider.disconnect();
+    setClient(null);
     setAccount(null);
-    setChainId(null);
-    setNetworkError(null);
+  }, [walletProvider]);
+  
+  // Attempt to restore session on initial load
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        const session = await walletProvider.restoreSession();
+        if (session) {
+          setClient(session.client);
+          setAccount(session.account);
+        }
+      } catch (err) {
+        console.error('Error restoring session:', err);
+        setError('Could not restore wallet session.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    restore();
+  }, [walletProvider]);
 
-    if (window.ethereum) {
-      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
-      window.ethereum.removeListener("chainChanged", handleChainChanged);
-    }
-  }, []);
-
-  const handleAccountsChanged = (accounts) => {
-    if (accounts.length === 0) {
-      disconnectWallet();
-    } else {
-      setAccount(accounts[0]);
-    }
+  const value = {
+    client,
+    account,
+    error,
+    isConnecting,
+    isLoading,
+    connect,
+    disconnect,
+    getAvailableWallets: () => walletProvider.getAvailableWallets(),
   };
 
   return (
-    <WalletContext.Provider
-      value={{
-        walletClient,
-        account,
-        chainId,
-        error,
-        networkError,
-        isConnecting,
-        connectWallet,
-        disconnectWallet,
-        checkNetwork,
-      }}
-    >
+    <WalletContext.Provider value={value}>
       {children}
     </WalletContext.Provider>
   );

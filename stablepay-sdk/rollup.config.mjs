@@ -1,10 +1,11 @@
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
-import { terser } from "rollup-plugin-terser";
+import terser from "@rollup/plugin-terser";
 import babel from "@rollup/plugin-babel";
 import postcss from "rollup-plugin-postcss";
 import url from "@rollup/plugin-url";
+
 export default {
   input: "src/index.js",
   output: [
@@ -24,18 +25,34 @@ export default {
         "react-dom": "ReactDOM",
         viem: "viem",
         "viem/chains": "viemChains",
+        "@walletconnect/ethereum-provider": "WalletConnectEthereumProvider",
+        "crypto-js": "CryptoJS",
       },
       sourcemap: true,
       assetFileNames: "assets/[name][extname]",
     },
   ],
-  external: ["djed-sdk", "web3", "react", "react-dom", "viem", "viem/chains"],
+  external: [
+    "djed-sdk",
+    "web3",
+    "react",
+    "react-dom",
+    "viem",
+    "viem/chains",
+    "@walletconnect/ethereum-provider",
+    "crypto-js",
+  ],
   plugins: [
     resolve({
       extensions: [".js", ".jsx"],
+      browser: true,
+      preferBuiltins: false,
     }),
     commonjs({
-      include: "node_modules/",
+      include: "node_modules/**",
+      transformMixedEsModules: true,
+      esmExternals: true,
+      requireReturnsDefault: "auto",
     }),
     json(),
     url({
@@ -43,7 +60,7 @@ export default {
       limit: 0,
       fileName: "[name][extname]",
       destDir: "dist/assets",
-      publicPath: "../assets/", //note:use relative path here
+      publicPath: "../assets/",
       emitFiles: true,
     }),
     postcss({
@@ -51,18 +68,16 @@ export default {
       extract: "styles.css",
       minimize: true,
       modules: true,
-
       use: ["sass"],
-
       url: {
-        url: "rebase", 
+        url: "rebase",
       },
     }),
-    terser(),
     babel({
       exclude: "node_modules/**",
       presets: ["@babel/preset-react"],
       babelHelpers: "bundled",
     }),
+    terser(),
   ],
 };

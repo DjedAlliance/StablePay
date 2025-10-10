@@ -3,9 +3,9 @@ import PayButton from "./PayButton";
 import Dialog from "./Dialog";
 import NetworkDropdown from "./NetworkDropdown";
 import TokenDropdown from "./TokenDropdown";
-import TransactionReview from "./TransactionReview";
+import TransactionReview from "./TransactionFee";
 import { NetworkProvider, useNetwork } from "../contexts/NetworkContext";
-import { WalletProvider } from "../contexts/WalletContext";
+import { WalletContextProvider } from "../contexts/WalletContext";
 import styles from "../styles/PricingCard.css";
 
 const WidgetContent = ({ onClose, buttonSize }) => {
@@ -28,9 +28,9 @@ const WidgetContent = ({ onClose, buttonSize }) => {
 const WidgetWithProviders = ({ onClose, buttonSize, networkSelector }) => {
   return (
     <NetworkProvider networkSelector={networkSelector}>
-      <WalletProvider>
+      <WalletContextProvider>
         <WidgetContent onClose={onClose} buttonSize={buttonSize} />
-      </WalletProvider>
+      </WalletContextProvider>
     </NetworkProvider>
   );
 };

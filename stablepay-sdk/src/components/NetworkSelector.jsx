@@ -1,5 +1,5 @@
-import React from 'react';
-import { useNetwork } from '../contexts/NetworkContext';
+import React from "react";
+import { useNetwork } from "../contexts/NetworkContext";
 
 const NetworkSelector = () => {
   const { selectNetwork, availableNetworks } = useNetwork();
@@ -8,16 +8,34 @@ const NetworkSelector = () => {
     selectNetwork(event.target.value);
   };
 
+  const containerStyle = {
+    backgroundColor: "var(--background)",
+    color: "var(--text)",
+    padding: "20px",
+    borderRadius: "8px",
+    border: "1px solid var(--secondary)",
+  };
+
+  const selectStyle = {
+    backgroundColor: "var(--background)",
+    color: "var(--text)",
+    border: "1px solid var(--secondary)",
+    padding: "8px",
+    borderRadius: "4px",
+  };
+
   return (
-    <div>
-      <h3>Select Network</h3>
-      <select onChange={handleNetworkChange}>
+    <div style={containerStyle}>
+      <h3 style={{ color: "var(--primary)" }}>Select Network</h3>
+      <select onChange={handleNetworkChange} style={selectStyle}>
         <option value="">Select a network</option>
-        {Object.entries(availableNetworks).map(([networkKey, networkConfig]) => (
-          <option key={networkKey} value={networkKey}>
-            {networkKey} (Chain ID: {networkConfig.chainId})
-          </option>
-        ))}
+        {Object.entries(availableNetworks).map(
+          ([networkKey, networkConfig]) => (
+            <option key={networkKey} value={networkKey}>
+              {networkKey} (Chain ID: {networkConfig.chainId})
+            </option>
+          )
+        )}
       </select>
     </div>
   );
