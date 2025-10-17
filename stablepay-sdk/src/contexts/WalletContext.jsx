@@ -33,29 +33,62 @@ export const WalletProvider = ({ children }) => {
     setError(null);
 
     try {
-      const walletClient = createWalletClient({
-        chain: mordor,
-        transport: custom(window.ethereum),
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
       });
 
-      const addresses = await walletClient.getAddresses();
-      if (addresses.length === 0) {
-        throw new Error('No wallet address found.');
+      if (accounts.length === 0) {
+        throw new Error('No wallet address found. Please unlock your wallet.');
       }
 
       const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
       const currentChainId = parseInt(chainIdHex, 16);
 
       if (currentChainId !== expectedChainId) {
-        throw new Error(`Wrong network detected. Please switch to Mordor Testnet`);
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${expectedChainId.toString(16)}` }],
+          });
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: `0x${expectedChainId.toString(16)}`,
+                    chainName: 'Mordor Testnet',
+                    nativeCurrency: {
+                      name: 'Mordor ETC',
+                      symbol: 'METC',
+                      decimals: 18,
+                    },
+                    rpcUrls: ['https://rpc.mordor.etccooperative.org'],
+                    blockExplorerUrls: ['https://etc-mordor.blockscout.com/'],
+                  },
+                ],
+              });
+            } catch (addError) {
+              throw new Error('Failed to add Mordor Testnet to MetaMask');
+            }
+          } else {
+            throw new Error('Please switch to Mordor Testnet in MetaMask');
+          }
+        }
       }
 
+      const walletClient = createWalletClient({
+        chain: mordor,
+        transport: custom(window.ethereum),
+      });
+
       setWalletClient(walletClient);
-      setAccount(addresses[0]);
+      setAccount(accounts[0]);
       setChainId(currentChainId);
 
       const publicClient = createPublicClient({ chain: mordor, transport: http() });
-      const balance = await publicClient.getBalance({ address: addresses[0] });
+      const balance = await publicClient.getBalance({ address: accounts[0] });
       setBalance(parseFloat(balance) / Math.pow(10, 18));
 
       window.ethereum.on('accountsChanged', handleAccountsChanged);

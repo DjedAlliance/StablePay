@@ -253,6 +253,66 @@
   line-height: 1.5;
 }
 
+.message-box {
+  margin-top: 20px;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detailsButton {
+  background: none;
+  border: none;
+  color: #f6941c;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 10px;
+}
+
+.errorDetails {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  color: #ff4d4f;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  max-height: 150px;
+  overflow: auto;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+}
+
+.errorDetails::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.errorDetails::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.errorDetails::-webkit-scrollbar-thumb {
+  background: rgba(255, 77, 79, 0.5);
+  border-radius: 3px;
+}
+
+.errorDetails::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 77, 79, 0.7);
+}
+
 /* Responsive styles */
 @media (max-width: 520px) {
   .pricingCard {
