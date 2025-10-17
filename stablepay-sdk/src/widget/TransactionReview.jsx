@@ -29,6 +29,8 @@ const TransactionReview = () => {
   const [txData, setTxData] = useState(null);
   const [message, setMessage] = useState("");
   const [txHash, setTxHash] = useState(null);
+  const [error, setError] = useState(null);
+  const [isErrorDetailsVisible, setIsErrorDetailsVisible] = useState(false);
 
   useEffect(() => {
     const initializeTransaction = async () => {
@@ -142,7 +144,8 @@ const TransactionReview = () => {
       setTxData(builtTx);
       setMessage("✅ Transaction ready! Click 'Send Transaction' to proceed.");
     } catch (error) {
-      setMessage(`❌ Transaction preparation failed: ${error.message}`);
+      setError(error);
+      setMessage(`❌ Transaction preparation failed.`);
     }
   };
 
@@ -163,7 +166,8 @@ const TransactionReview = () => {
       setTxHash(txHash);
       setMessage(`✅ Transaction sent!`);
     } catch (error) {
-      setMessage(`❌ Transaction failed: ${error.message}`);
+      setError(error);
+      setMessage(`❌ Transaction failed.`);
     }
   };
 
@@ -219,7 +223,25 @@ const TransactionReview = () => {
 )}
 
 
-      {message && <div className="message-box">{message}</div>}
+      {message && (
+        <div className="message-box">
+          {message}
+          {error && (
+            <button
+              onClick={() => setIsErrorDetailsVisible(!isErrorDetailsVisible)}
+              className={styles.detailsButton}
+            >
+              {isErrorDetailsVisible ? "Hide Details" : "Show Details"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {isErrorDetailsVisible && error && (
+        <div className={styles.errorDetails}>
+          <pre>{error.message}</pre>
+        </div>
+      )}
 
       
       {txHash && (
