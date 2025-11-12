@@ -86,6 +86,14 @@ The main files of the Djed SDK and their purposes are:
 * [constants.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/constants.js) - contains configuration constants.
 * [web3.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/web3.js) - handles wallet connection.
 
+The main files of the StablePay widget and their purposes are:
+
+* [widget/Widget.jsx](https://github.com/DjedAlliance/StablePay/blob/main/stablepay-sdk/src/widget/Widget.jsx) - contains the main widget component.
+* [widget/PayButton.jsx](https://github.com/DjedAlliance/StablePay/blob/main/stablepay-sdk/src/widget/PayButton.jsx) - contains the `Pay with StablePay" button component.
+* [widget/NetworkDropdown](https://github.com/DjedAlliance/StablePay/blob/main/stablepay-sdk/src/widget/NetworkDropdown.jsx) - contains the widget's subcomponent that allows customers to select the blockchain network that they would like to use for the payment.
+* [widget/TokenDropdown](https://github.com/DjedAlliance/StablePay/blob/main/stablepay-sdk/src/widget/TokenDropdown.jsx) - contains the widget's subcomponent that allows customers to select the token (native cryptocurrency or stablecoin) that they would like to use for the payment.
+* [widget/TransactionReview](https://github.com/DjedAlliance/StablePay/blob/main/stablepay-sdk/src/widget/TransactionReview.jsx) - contains the widget's subcomponent that constructs the transaction, shows it to costumer and allows the customer to connect a wallet and submit the transaction.
+
 
 ## **Using the StablePay Widget**
 
