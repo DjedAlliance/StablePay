@@ -20,13 +20,11 @@ const TransactionReview = () => {
     connectWallet,
     account,
     walletClient,
-    publicClient,
     isConnecting,
   } = useWallet();
 
   const [transaction, setTransaction] = useState(null);
   const [tradeDataBuySc, setTradeDataBuySc] = useState(null);
-  const [txData, setTxData] = useState(null);
   const [message, setMessage] = useState("");
   const [txHash, setTxHash] = useState(null);
   const [error, setError] = useState(null);
@@ -88,8 +86,9 @@ const TransactionReview = () => {
       console.log("Wallet connected:", account);
     }
   };
-
-  const handleSendTransaction = async () => {
+  
+  // Single Pay function to prepare and send the transaction
+  const handlePay = async () => {
     if (!account || !contextTransactionDetails || !transaction) {
       setMessage("❌ Wallet not connected or transaction details missing");
       return;
@@ -137,52 +136,23 @@ const TransactionReview = () => {
             functionName: "transfer",
             args: [receiver, amountToSend],
           }),
-          account: account,
         };
       }
 
-      setTxData(builtTx);
-      setMessage("✅ Transaction ready! Click 'Send Transaction' to proceed.");
-    } catch (error) {
-      setError(error);
-      setMessage(`❌ Transaction preparation failed.`);
-    }
-  };
-
-  const handleBuySc = async () => {
-    try {
-      if (!walletClient || !account || !txData) {
-        setMessage("❌ Wallet client, account, or transaction data is missing");
-        return;
-      }
-
-      setMessage("⏳ Sending transaction...");
+      // Now send it 
+            setMessage("⏳ Sending transaction...");
 
       const txHash = await walletClient.sendTransaction({
-        ...txData,
+        ...builtTx,
         account: account,
       });
 
       setTxHash(txHash);
-      setMessage(`✅ Transaction sent!`);
+      setMessage("✅ Transaction sent!");
     } catch (error) {
       setError(error);
-      setMessage(`❌ Transaction failed.`);
+      setMessage("❌ Transaction failed.");
     }
-  };
-
-  const getExplorerUrl = () => {
-    if (!txHash || !selectedNetwork) return null;
-
-    const explorerBaseUrls = {
-      "ethereum-classic": "https://etc-mordor.blockscout.com/tx/",
-      "sepolia": "https://sepolia.etherscan.io/tx/",
-      "milkomeda-mainnet": "https://explorer-mainnet-cardano-evm.c1.milkomeda.com/tx/",
-    };
-
-    return explorerBaseUrls[selectedNetwork]
-      ? `${explorerBaseUrls[selectedNetwork]}${txHash}`
-      : null;
   };
 
   return (
@@ -206,22 +176,13 @@ const TransactionReview = () => {
       <button className={styles.walletButton} onClick={handleConnectWallet} disabled={isConnecting}>
         {isConnecting ? "Connecting..." : "Connect Wallet"}
       </button>
-
-      {account && !txData && (
-        <button className={styles.walletButton} onClick={handleSendTransaction}>
-          Prepare Transaction
-        </button>
+      
+      {/* Single button to prepare and send transaction (Pay button) */}
+      {account && (
+        <button className={styles.walletButton} onClick={handlePay}>
+          Pay
+        </button> 
       )}
-      {account && txData && (
-  <button 
-    className={styles.walletButton} 
-    onClick={handleBuySc} 
-    disabled={txHash !== null} // Disable the button when txHash is set
-  >
-    Send Transaction
-  </button>
-)}
-
 
       {message && (
         <div className="message-box">
@@ -243,28 +204,26 @@ const TransactionReview = () => {
         </div>
       )}
 
-      
       {txHash && (
-  <div className={styles.transactionLink}>
-    ✅ Transaction Hash:{" "}
-    <a
-      href={`https://blockscout.com/etc/mordor/tx/${txHash}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={styles.explorerLink}
-      style={{ 
-        color: "#007bff", 
-        textDecoration: "underline", 
-        fontWeight: "bold", 
-        cursor: "pointer",
-        wordBreak: "break-word" 
-      }}
-    >
-      {txHash.slice(0, 6)}...{txHash.slice(-6)}
-    </a>
-  </div>
-)}
-
+        <div className={styles.transactionLink}>
+          ✅ Transaction Hash:{" "}
+          <a
+            href={`https://blockscout.com/etc/mordor/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.explorerLink}
+            style={{ 
+              color: "#007bff", 
+              textDecoration: "underline", 
+              fontWeight: "bold", 
+              cursor: "pointer",
+              wordBreak: "break-word" 
+            }}
+          >
+            {txHash.slice(0, 6)}...{txHash.slice(-6)}
+          </a>
+        </div>
+      )}
     </div>
   );
 };
