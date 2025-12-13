@@ -63,7 +63,7 @@ export const networksConfig = {
     djedAddress: '0xCc3664d7021FD36B1Fe2b136e2324710c8442cCf', 
     tokens: {
       stablecoin: {
-        symbol: 'SC',
+        symbol: 'ECSD',
         address: '0x5A7Ca94F6E969C94bef4CE5e2f90ed9d4891918A',  
         decimals: 18,
         isDirectTransfer: true
