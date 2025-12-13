@@ -2,8 +2,8 @@ export function web3Promise(contract, method, ...args) {
   return contract.methods[method](...args).call();
 }
 // Function to build a transaction
-// Set gas limit to 500,000 by default
-export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
+// Gas limit is now estimated dynamically for safety
+export async function buildTx(from_, to_, value_, data_, setGasLimit = true, web3 = null) {
   const tx = {
     to: to_,
     from: from_,
@@ -11,7 +11,18 @@ export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
     data: data_,
   };
   if (setGasLimit) {
-    tx.gasLimit = 500_000;
+    // Dynamic gas estimation with 20% safety buffer
+    if (web3) {
+      try {
+        const estimatedGas = await web3.eth.estimateGas(tx);
+        tx.gasLimit = Math.ceil(Number(estimatedGas) * 1.2);
+      } catch (e) {
+        // Fallback to default if estimation fails
+        tx.gasLimit = 500_000;
+      }
+    } else {
+      tx.gasLimit = 500_000;
+    }
   }
   return tx;
 }
