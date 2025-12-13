@@ -72,8 +72,9 @@ export class Transaction {
     try {
       console.log(`Building stablecoin purchase transaction from ${payer} to ${receiver} with value ${value}`);
 
-      //Hardcoded UI address
-      const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
+      // UI address - configurable via environment variable, falls back to default
+      const UI = (typeof process !== 'undefined' && process.env?.STABLEPAY_UI_ADDRESS) 
+        || '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
 
       //buyScTx from djed-sdk
       const txData = await buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
