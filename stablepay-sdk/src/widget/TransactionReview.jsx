@@ -187,7 +187,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
     if (!txHash || !selectedNetwork) return null;
 
     const explorerBaseUrls = {
-      "ethereum-classic": "https://etc-mordor.blockscout.com/tx/",
+      "mordor-testnet": "https://etc-mordor.blockscout.com/tx/",
       "sepolia": "https://sepolia.etherscan.io/tx/",
       "milkomeda-mainnet": "https://explorer-mainnet-cardano-evm.c1.milkomeda.com/tx/",
     };
