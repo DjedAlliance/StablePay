@@ -1,7 +1,7 @@
 // src/index.js
 import { NetworkSelector } from './core/NetworkSelector';
 import { Transaction } from './core/Transaction';
-import { MerchantConfig } from './core/MerchantConfig';
+import { Config } from './core/MerchantConfig';
 import Widget from './widget/Widget.jsx';
 import PayButton from './widget/PayButton.jsx';
 import Dialog from './widget/Dialog.jsx';
@@ -12,7 +12,7 @@ import './styles/PricingCard.css';
 const StablePay = {
   NetworkSelector,
   Transaction,
-  MerchantConfig,
+  Config,
   Widget,
   PayButton,
   Dialog,

@@ -1,6 +1,6 @@
 import { networksConfig } from "../utils/config";
 
-export class MerchantConfig {
+export class Config {
   constructor(options = {}) {
     this.receivingAddress = options.receivingAddress || "";
     this.blacklist = options.blacklist || [];
@@ -59,4 +59,4 @@ export class MerchantConfig {
   }
 }
 
-export default MerchantConfig;
+export default Config;

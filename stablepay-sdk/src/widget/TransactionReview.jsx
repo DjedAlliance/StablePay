@@ -7,7 +7,7 @@ import styles from "../styles/PricingCard.css";
 
 const STABLECOIN_CONTRACT_ADDRESS = "0xdc86935A9597aA3A9008d2f26232233043091284"; 
 
-const TransactionReview = () => {
+const TransactionReview = ({ onTransactionComplete }) => {
   const {
     networkSelector,
     selectedNetwork,
@@ -165,6 +165,18 @@ const TransactionReview = () => {
 
       setTxHash(txHash);
       setMessage(`✅ Transaction sent!`);
+      
+      // Call the callback with transaction details
+      if (onTransactionComplete) {
+        onTransactionComplete({
+          txHash,
+          network: selectedNetwork,
+          token: selectedToken?.key,
+          tokenSymbol: selectedToken?.symbol,
+          amount: contextTransactionDetails?.amount,
+          receivingAddress: contextTransactionDetails?.receivingAddress,
+        });
+      }
     } catch (error) {
       setError(error);
       setMessage(`❌ Transaction failed.`);
