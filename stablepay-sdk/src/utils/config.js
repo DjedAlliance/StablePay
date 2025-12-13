@@ -38,7 +38,7 @@ export const networksConfig = {
     },
     feeUI: 0
   },
-  'mordor-testnet': {  //Mordor Testnet details
+  'ethereum-classic': {  //Mordor Testnet details
     uri: 'https://rpc.mordor.etccooperative.org',  // Mordor RPC
     chainId: 63,  
     djedAddress: '0xD4548F4b6d08852B56cdabC6be7Fd90953179d68',  //Mordor DJED contract
@@ -57,7 +57,7 @@ export const networksConfig = {
     },
     feeUI: 0
   },
-  'ethereum-classic': {  // NEW Mainnet Entry
+  'ethereum-classic-mainnet': {  // NEW Mainnet Entry
     uri: 'https://etc.rivet.link',
     chainId: 61,
     djedAddress: '0xCc3664d7021FD36B1Fe2b136e2324710c8442cCf',
