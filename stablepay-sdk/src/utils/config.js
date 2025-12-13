@@ -38,7 +38,7 @@ export const networksConfig = {
     },
     feeUI: 0
   },
-  'ethereum-classic': {  //Mordor Testnet details
+  'mordor-testnet': {  //Mordor Testnet details
     uri: 'https://rpc.mordor.etccooperative.org',  // Mordor RPC
     chainId: 63,  
     djedAddress: '0xD4548F4b6d08852B56cdabC6be7Fd90953179d68',  //Mordor DJED contract
