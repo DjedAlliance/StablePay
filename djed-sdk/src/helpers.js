@@ -1,17 +1,19 @@
+// Call contract read method using ethers
 export function web3Promise(contract, method, ...args) {
-  return contract.methods[method](...args).call();
+  return contract[method](...args);
 }
-// Function to build a transaction
+
+// Function to build a transaction object for ethers signer
 // Set gas limit to 500,000 by default
 export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
   const tx = {
     to: to_,
     from: from_,
-    value: "0x" + BigInt(value_).toString(16), // Use BigInt instead of BN
+    value: value_ ? BigInt(value_) : 0n,
     data: data_,
   };
   if (setGasLimit) {
-    tx.gasLimit = 500_000;
+    tx.gasLimit = 500_000n;
   }
   return tx;
 }

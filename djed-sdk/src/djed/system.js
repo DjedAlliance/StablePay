@@ -115,7 +115,7 @@ export const getSystemParams = async (djed) => {
 };
 
 export const getAccountDetails = async (
-  web3,
+  provider,
   account,
   stableCoin,
   reserveCoin,
@@ -135,7 +135,7 @@ export const getAccountDetails = async (
       web3Promise(reserveCoin, "balanceOf", account),
       rcDecimals
     ),
-    scaledUnscaledPromise(web3.eth.getBalance(account), BC_DECIMALS),
+    scaledUnscaledPromise(provider.getBalance(account), BC_DECIMALS),
   ]);
 
   return {

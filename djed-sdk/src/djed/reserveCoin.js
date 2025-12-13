@@ -71,15 +71,20 @@ export const tradeDataPriceSellRc = async (djed, rcDecimals, amountScaled) => {
 };
 
 export const buyRcTx = (djed, account, value, UI, DJED_ADDRESS) => {
-  const data = djed.methods
-    .buyReserveCoins(account, FEE_UI_UNSCALED, UI)
-    .encodeABI();
+  const data = djed.interface.encodeFunctionData("buyReserveCoins", [
+    account,
+    FEE_UI_UNSCALED,
+    UI,
+  ]);
   return buildTx(account, DJED_ADDRESS, value, data);
 };
 
 export const sellRcTx = (djed, account, amount, UI, DJED_ADDRESS) => {
-  const data = djed.methods
-    .sellReserveCoins(amount, account, FEE_UI_UNSCALED, UI)
-    .encodeABI();
+  const data = djed.interface.encodeFunctionData("sellReserveCoins", [
+    amount,
+    account,
+    FEE_UI_UNSCALED,
+    UI,
+  ]);
   return buildTx(account, DJED_ADDRESS, 0, data);
 };
