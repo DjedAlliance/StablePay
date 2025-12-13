@@ -8,7 +8,7 @@ import { NetworkProvider, useNetwork } from "../contexts/NetworkContext";
 import { WalletProvider } from "../contexts/WalletContext";
 import styles from "../styles/PricingCard.css";
 
-const WidgetContent = ({ onClose, buttonSize }) => {
+const WidgetContent = ({ onClose, buttonSize, onTransactionComplete }) => {
   const { resetSelections } = useNetwork(); 
 
   const handleClose = () => {
@@ -20,22 +20,22 @@ const WidgetContent = ({ onClose, buttonSize }) => {
     <Dialog onClose={handleClose} size={buttonSize}>
       <NetworkDropdown />
       <TokenDropdown />
-      <TransactionReview />
+      <TransactionReview onTransactionComplete={onTransactionComplete} />
     </Dialog>
   );
 };
 
-const WidgetWithProviders = ({ onClose, buttonSize, networkSelector }) => {
+const WidgetWithProviders = ({ onClose, buttonSize, networkSelector, onTransactionComplete }) => {
   return (
     <NetworkProvider networkSelector={networkSelector}>
       <WalletProvider> 
-        <WidgetContent onClose={onClose} buttonSize={buttonSize} />
+        <WidgetContent onClose={onClose} buttonSize={buttonSize} onTransactionComplete={onTransactionComplete} />
       </WalletProvider>
     </NetworkProvider>
   );
 };
 
-export const Widget = ({ networkSelector, buttonSize = "medium" }) => {
+export const Widget = ({ networkSelector, buttonSize = "medium", onTransactionComplete, onSuccess }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleOpenDialog = () => {
@@ -45,6 +45,9 @@ export const Widget = ({ networkSelector, buttonSize = "medium" }) => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
   };
+
+  // Support both onTransactionComplete and onSuccess for backwards compatibility
+  const handleTransactionComplete = onTransactionComplete || onSuccess;
 
   return (
     <div className={styles.widgetContainer}>
@@ -56,6 +59,7 @@ export const Widget = ({ networkSelector, buttonSize = "medium" }) => {
           onClose={handleCloseDialog}
           buttonSize={buttonSize}
           networkSelector={networkSelector}
+          onTransactionComplete={handleTransactionComplete}
         />
       )}
     </div>
