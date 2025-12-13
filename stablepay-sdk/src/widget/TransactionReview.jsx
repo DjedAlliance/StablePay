@@ -188,6 +188,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
     const explorerBaseUrls = {
       "mordor-testnet": "https://etc-mordor.blockscout.com/tx/",
+      "ethereum-classic-mainnet": "https://etc.blockscout.com/tx/",
       "sepolia": "https://sepolia.etherscan.io/tx/",
       "milkomeda-mainnet": "https://explorer-mainnet-cardano-evm.c1.milkomeda.com/tx/",
     };
