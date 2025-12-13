@@ -128,10 +128,10 @@ export const promiseTx = (isWalletConnected, tx, signer) => {
   return signer.sendTransaction(tx);
 };
 
-export const verifyTx = (web3, hash) => {
+export const verifyTx = (provider, hash) => {
   return new Promise((res) => {
     setTimeout(() => {
-      web3.eth
+      provider
         .getTransactionReceipt(hash)
         .then((receipt) => res(receipt.status));
     }, CONFIRMATION_WAIT_PERIOD);

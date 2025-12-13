@@ -12,9 +12,10 @@ export class Transaction {
     }
 
     try {
-      this.web3 = await getWeb3(this.networkUri);
-      this.djedContract = getDjedContract(this.web3, this.djedAddress);
-      const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
+      // Get ethers provider from BrowserProvider
+      this.provider = await getWeb3(this.networkUri);
+      this.djedContract = getDjedContract(this.provider, this.djedAddress);
+      const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.provider);
       const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
       this.stableCoin = stableCoin;
       this.reserveCoin = reserveCoin;
@@ -23,10 +24,10 @@ export class Transaction {
 
       // Get the oracle contract
       this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
-        getOracleContract(this.web3, addr, this.djedContract._address)
+        getOracleContract(this.provider, addr)
       );
 
-      this.oracleAddress = this.oracleContract._address;
+      this.oracleAddress = this.oracleContract.target;
 
       console.log('Transaction initialized successfully');
     } catch (error) {
@@ -37,10 +38,10 @@ export class Transaction {
 
   getBlockchainDetails() {
     return {
-      web3Available: !!this.web3,
+      providerAvailable: !!this.provider,
       djedContractAvailable: !!this.djedContract,
-      stableCoinAddress: this.stableCoin ? this.stableCoin._address : 'N/A',
-      reserveCoinAddress: this.reserveCoin ? this.reserveCoin._address : 'N/A',
+      stableCoinAddress: this.stableCoin ? this.stableCoin.target : 'N/A',
+      reserveCoinAddress: this.reserveCoin ? this.reserveCoin.target : 'N/A',
       stableCoinDecimals: this.scDecimals,
       reserveCoinDecimals: this.rcDecimals,
       oracleAddress: this.oracleAddress || 'N/A',
@@ -57,7 +58,7 @@ export class Transaction {
     }
     try {
       const result = await tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
-      return result.totalBCScaled; //converted ETH equivalent
+      return result.totalBCScaled; // converted ETH equivalent
     } catch (error) {
       console.error("Error fetching trade data for buying stablecoins: ", error);
       throw error;
@@ -72,10 +73,10 @@ export class Transaction {
     try {
       console.log(`Building stablecoin purchase transaction from ${payer} to ${receiver} with value ${value}`);
 
-      //Hardcoded UI address
+      // Hardcoded UI address
       const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
 
-      //buyScTx from djed-sdk
+      // buyScTx from djed-sdk returns tx object for ethers signer
       const txData = await buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
 
       console.log("Transaction built:", txData);

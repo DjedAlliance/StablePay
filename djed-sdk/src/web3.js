@@ -1,11 +1,13 @@
-import Web3 from "web3";
+import { ethers } from "ethers";
 
+// Returns an ethers.Provider - Web3Provider for browser environment
 export const getWeb3 = (BLOCKCHAIN_URI) =>
   new Promise((resolve, reject) => {
     if (window.ethereum) {
       try {
-        const web3 = new Web3(BLOCKCHAIN_URI);
-        resolve(web3);
+        // Use Web3Provider for browser-based wallet integration (MetaMask, etc.)
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        resolve(provider);
       } catch (error) {
         reject(error);
       }
