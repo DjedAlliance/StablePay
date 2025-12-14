@@ -265,12 +265,12 @@ const TransactionReview = ({ onTransactionComplete }) => {
       target="_blank"
       rel="noopener noreferrer"
       className={styles.explorerLink}
-      style={{ 
-        color: "#007bff", 
-        textDecoration: "underline", 
-        fontWeight: "bold", 
+      style={{
+        color: "#007bff",
+        textDecoration: "underline",
+        fontWeight: "bold",
         cursor: "pointer",
-        wordBreak: "break-word" 
+        wordBreak: "break-word",
       }}
     >
       {txHash.slice(0, 6)}...{txHash.slice(-6)}
