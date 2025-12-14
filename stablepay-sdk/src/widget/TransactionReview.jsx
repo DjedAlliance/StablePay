@@ -89,65 +89,63 @@ const TransactionReview = ({ onTransactionComplete }) => {
     }
   };
 
-  const handleSendTransaction = async () => {
-    if (!account || !contextTransactionDetails || !transaction) {
-      setMessage("❌ Wallet not connected or transaction details missing");
-      return;
+  const prepareTransaction = async () => {
+  if (!account || !contextTransactionDetails || !transaction) return;
+
+  try {
+    setMessage("⏳ Preparing transaction...");
+
+    const receiver = contextTransactionDetails.receivingAddress;
+    let builtTx;
+
+    if (selectedToken.key === "native") {
+      const UI = "0x0232556C83791b8291E9b23BfEa7d67405Bd9839";
+      const amountToSend = tradeDataBuySc || "0";
+
+      builtTx = await transaction.buyStablecoins(
+        account,
+        receiver,
+        parseEther(String(amountToSend)),
+        UI
+      );
+    } else {
+      const amountToSend = contextTransactionDetails.amount
+        ? parseUnits(
+            String(contextTransactionDetails.amount),
+            contextTransactionDetails.stableCoinDecimals
+          )
+        : "0";
+
+      builtTx = {
+        to: STABLECOIN_CONTRACT_ADDRESS,
+        data: encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                { internalType: "address", name: "to", type: "address" },
+                { internalType: "uint256", name: "amount", type: "uint256" },
+              ],
+              name: "transfer",
+              outputs: [{ internalType: "bool", name: "", type: "bool" }],
+              stateMutability: "nonpayable",
+              type: "function",
+            },
+          ],
+          functionName: "transfer",
+          args: [receiver, amountToSend],
+        }),
+        account: account,
+      };
     }
 
-    try {
-      setMessage("⏳ Preparing transaction...");
+    setTxData(builtTx);
+    setMessage("✅ Transaction ready. Please confirm in your wallet.");
+  } catch (error) {
+    setError(error);
+    setMessage("❌ Transaction preparation failed.");
+  }
+};
 
-      const receiver = contextTransactionDetails.receivingAddress;
-      let builtTx;
-
-      if (selectedToken.key === "native") {
-        const UI = "0x0232556C83791b8291E9b23BfEa7d67405Bd9839";
-        const amountToSend = tradeDataBuySc || "0";
-
-        builtTx = await transaction.buyStablecoins(
-          account,
-          receiver,
-          parseEther(String(amountToSend)),
-          UI
-        );
-      } else {
-        const amountToSend = contextTransactionDetails.amount
-          ? parseUnits(
-              String(contextTransactionDetails.amount),
-              contextTransactionDetails.stableCoinDecimals
-            )
-          : "0";
-
-        builtTx = {
-          to: STABLECOIN_CONTRACT_ADDRESS,
-          data: encodeFunctionData({
-            abi: [
-              {
-                inputs: [
-                  { internalType: "address", name: "to", type: "address" },
-                  { internalType: "uint256", name: "amount", type: "uint256" },
-                ],
-                name: "transfer",
-                outputs: [{ internalType: "bool", name: "", type: "bool" }],
-                stateMutability: "nonpayable",
-                type: "function",
-              },
-            ],
-            functionName: "transfer",
-            args: [receiver, amountToSend],
-          }),
-          account: account,
-        };
-      }
-
-      setTxData(builtTx);
-      setMessage("✅ Transaction ready! Click 'Send Transaction' to proceed.");
-    } catch (error) {
-      setError(error);
-      setMessage(`❌ Transaction preparation failed.`);
-    }
-  };
 
   const handleBuySc = async () => {
     try {
@@ -156,7 +154,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
         return;
       }
 
-      setMessage("⏳ Sending transaction...");
+      setMessage("⏳ Waiting for wallet confirmation...");
 
       const txHash = await walletClient.sendTransaction({
         ...txData,
@@ -219,18 +217,17 @@ const TransactionReview = ({ onTransactionComplete }) => {
         {isConnecting ? "Connecting..." : "Connect Wallet"}
       </button>
 
-      {account && !txData && (
-        <button className={styles.walletButton} onClick={handleSendTransaction}>
-          Prepare Transaction
-        </button>
-      )}
+      {useEffect(() => {
+       if (account && transaction && contextTransactionDetails && !txData) prepareTransaction()
+}, [account, transaction, contextTransactionDetails, txData]);}
+
       {account && txData && (
   <button 
     className={styles.walletButton} 
     onClick={handleBuySc} 
     disabled={txHash !== null} // Disable the button when txHash is set
   >
-    Send Transaction
+    Sign and Send Transaction
   </button>
 )}
 
