@@ -187,7 +187,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
     if (!txHash || !selectedNetwork) return null;
 
     const explorerBaseUrls = {
-      "ethereum-classic": "https://etc-mordor.blockscout.com/tx/",
+      "mordor-testnet": "https://etc-mordor.blockscout.com/tx/",
+      "ethereum-classic-mainnet": "https://etc.blockscout.com/tx/",
       "sepolia": "https://sepolia.etherscan.io/tx/",
       "milkomeda-mainnet": "https://explorer-mainnet-cardano-evm.c1.milkomeda.com/tx/",
     };
@@ -264,12 +265,12 @@ const TransactionReview = ({ onTransactionComplete }) => {
       target="_blank"
       rel="noopener noreferrer"
       className={styles.explorerLink}
-      style={{ 
-        color: "#007bff", 
-        textDecoration: "underline", 
-        fontWeight: "bold", 
+      style={{
+        color: "#007bff",
+        textDecoration: "underline",
+        fontWeight: "bold",
         cursor: "pointer",
-        wordBreak: "break-word" 
+        wordBreak: "break-word",
       }}
     >
       {txHash.slice(0, 6)}...{txHash.slice(-6)}

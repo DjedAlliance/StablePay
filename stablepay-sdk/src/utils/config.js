@@ -38,7 +38,7 @@ export const networksConfig = {
     },
     feeUI: 0
   },
-  'ethereum-classic': {  //Mordor Testnet details
+  'mordor-testnet': {  //Mordor Testnet details
     uri: 'https://rpc.mordor.etccooperative.org',  // Mordor RPC
     chainId: 63,  
     djedAddress: '0xD4548F4b6d08852B56cdabC6be7Fd90953179d68',  //Mordor DJED contract
@@ -46,6 +46,25 @@ export const networksConfig = {
       stablecoin: {
         symbol: 'ECSD',
         address: '0xffD4505B3452Dc22f8473616d50503bA9E1710Ac',  //  Mordor Stablecoin
+        decimals: 18,
+        isDirectTransfer: true
+      },
+      native: {
+        symbol: 'ETC',
+        decimals: 18,
+        isNative: true
+      }
+    },
+    feeUI: 0
+  },
+  'ethereum-classic-mainnet': {  // NEW Mainnet Entry
+    uri: 'https://etc.rivet.link',
+    chainId: 61,
+    djedAddress: '0xCc3664d7021FD36B1Fe2b136e2324710c8442cCf',
+    tokens: {
+      stablecoin: {
+        symbol: 'ECSD',
+        address: '0x5A7Ca94F6E969C94bef4CE5e2f90ed9d4891918A',
         decimals: 18,
         isDirectTransfer: true
       },
