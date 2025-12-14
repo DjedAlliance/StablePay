@@ -20,3 +20,23 @@ export const mordor = defineChain({
   },
   testnet: true,
 });
+
+export const etcMainnet = defineChain({
+  id: 61,
+  name: 'Ethereum Classic',
+  network: 'ethereum-classic',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ether',
+    symbol: 'ETC',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://etc.rivet.link'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'BlockScout', url: 'https://blockscout.com/etc/mainnet' },
+  },
+  testnet: false,
+});

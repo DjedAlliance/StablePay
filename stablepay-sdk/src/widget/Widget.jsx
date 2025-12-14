@@ -26,6 +26,8 @@ const WidgetContent = ({ onClose, buttonSize, onTransactionComplete }) => {
 };
 
 const WidgetWithProviders = ({ onClose, buttonSize, networkSelector, onTransactionComplete }) => {
+  // Keep a global reference of current selection for WalletContext
+  window.__STABLEPAY_SELECTED_NETWORK__ = networkSelector?.selectedNetwork || null;
   return (
     <NetworkProvider networkSelector={networkSelector}>
       <WalletProvider> 
