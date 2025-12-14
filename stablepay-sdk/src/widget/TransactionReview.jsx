@@ -31,6 +31,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
   const [txHash, setTxHash] = useState(null);
   const [error, setError] = useState(null);
   const [isErrorDetailsVisible, setIsErrorDetailsVisible] = useState(false);
+  const [isPreparingTx, setIsPreparingTx] = useState(false);
 
   useEffect(() => {
     const initializeTransaction = async () => {
@@ -78,6 +79,13 @@ const TransactionReview = ({ onTransactionComplete }) => {
     initializeTransaction();
   }, [selectedNetwork, selectedToken, networkSelector, setTransactionDetails]);
 
+  // Auto-prepare transaction when wallet is connected
+  useEffect(() => {
+    if (account && transaction && contextTransactionDetails && !txData && !isPreparingTx) {
+      prepareTransaction();
+    }
+  }, [account, transaction, contextTransactionDetails, txData, isPreparingTx]);
+
   if (!contextTransactionDetails) {
     return <div className={styles.loading}>Initializing transaction...</div>;
   }
@@ -89,13 +97,13 @@ const TransactionReview = ({ onTransactionComplete }) => {
     }
   };
 
-  const handleSendTransaction = async () => {
-    if (!account || !contextTransactionDetails || !transaction) {
-      setMessage("❌ Wallet not connected or transaction details missing");
+  const prepareTransaction = async () => {
+    if (!account || !contextTransactionDetails || !transaction || isPreparingTx || txData) {
       return;
     }
 
     try {
+      setIsPreparingTx(true);
       setMessage("⏳ Preparing transaction...");
 
       const receiver = contextTransactionDetails.receivingAddress;
@@ -142,10 +150,12 @@ const TransactionReview = ({ onTransactionComplete }) => {
       }
 
       setTxData(builtTx);
-      setMessage("✅ Transaction ready! Click 'Send Transaction' to proceed.");
+      setMessage("✅ Ready to sign and send transaction");
     } catch (error) {
       setError(error);
       setMessage(`❌ Transaction preparation failed.`);
+    } finally {
+      setIsPreparingTx(false);
     }
   };
 
@@ -220,20 +230,21 @@ const TransactionReview = ({ onTransactionComplete }) => {
         {isConnecting ? "Connecting..." : "Connect Wallet"}
       </button>
 
-      {account && !txData && (
-        <button className={styles.walletButton} onClick={handleSendTransaction}>
-          Prepare Transaction
+      {account && txData && (
+        <button 
+          className={styles.walletButton} 
+          onClick={handleBuySc} 
+          disabled={txHash !== null || isPreparingTx}
+        >
+          Sign & Send
         </button>
       )}
-      {account && txData && (
-  <button 
-    className={styles.walletButton} 
-    onClick={handleBuySc} 
-    disabled={txHash !== null} // Disable the button when txHash is set
-  >
-    Send Transaction
-  </button>
-)}
+
+      {account && !txData && isPreparingTx && (
+        <button className={styles.walletButton} disabled>
+          Preparing...
+        </button>
+      )}
 
 
       {message && (
