@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { createWalletClient, createPublicClient, custom, http } from 'viem';
-import { mordor } from './chains';
+import { mordor, etcMainnet } from './chains';
 
 const WalletContext = createContext(null);
 
@@ -21,7 +21,12 @@ export const WalletProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const expectedChainId = mordor.id; // Use Mordor Testnet
+  const expectedChainId = (function(){ return (window.__STABLEPAY_SELECTED_NETWORK__ === 'ethereum-classic-mainnet' ? etcMainnet : mordor).id; })();
+  const getExpectedChain = () => {
+    const key = window.__STABLEPAY_SELECTED_NETWORK__;
+    if (key === 'ethereum-classic-mainnet') return etcMainnet;
+    return mordor;
+  };
 
   const connectWallet = useCallback(async () => {
     if (!window.ethereum) {
@@ -53,33 +58,30 @@ export const WalletProvider = ({ children }) => {
         } catch (switchError) {
           if (switchError.code === 4902) {
             try {
+              const expectedChain = getExpectedChain();
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [
                   {
-                    chainId: `0x${expectedChainId.toString(16)}`,
-                    chainName: 'Mordor Testnet',
-                    nativeCurrency: {
-                      name: 'Mordor ETC',
-                      symbol: 'METC',
-                      decimals: 18,
-                    },
-                    rpcUrls: ['https://rpc.mordor.etccooperative.org'],
-                    blockExplorerUrls: ['https://etc-mordor.blockscout.com/'],
+                    chainId: `0x${expectedChain.id.toString(16)}`,
+                    chainName: expectedChain.name,
+                    nativeCurrency: expectedChain.nativeCurrency,
+                    rpcUrls: expectedChain.rpcUrls.default.http,
+                    blockExplorerUrls: [expectedChain.blockExplorers.default.url],
                   },
                 ],
               });
             } catch (addError) {
-              throw new Error('Failed to add Mordor Testnet to MetaMask');
+              throw new Error('Failed to add chain to MetaMask');
             }
           } else {
-            throw new Error('Please switch to Mordor Testnet in MetaMask');
+            throw new Error(`Please switch to ${getExpectedChain().name} in MetaMask`);
           }
         }
       }
 
       const walletClient = createWalletClient({
-        chain: mordor,
+        chain: getExpectedChain(),
         transport: custom(window.ethereum),
       });
 
@@ -87,7 +89,7 @@ export const WalletProvider = ({ children }) => {
       setAccount(accounts[0]);
       setChainId(currentChainId);
 
-      const publicClient = createPublicClient({ chain: mordor, transport: http() });
+      const publicClient = createPublicClient({ chain: getExpectedChain(), transport: http() });
       const balance = await publicClient.getBalance({ address: accounts[0] });
       setBalance(parseFloat(balance) / Math.pow(10, 18));
 
@@ -105,20 +107,21 @@ export const WalletProvider = ({ children }) => {
   }, []);
 
   const connectPublicClient = useCallback(() => {
-    setPublicClient(createPublicClient({ chain: mordor, transport: http() }));
+    setPublicClient(createPublicClient({ chain: getExpectedChain(), transport: http() }));
   }, []);
 
   const handleChainChanged = async (chainIdHex) => {
     const newChainId = parseInt(chainIdHex, 16);
     setChainId(newChainId);
 
-    if (newChainId !== expectedChainId) {
-      setError(`Wrong network detected. Please switch to Mordor Testnet`);
+    const expectedId = getExpectedChain().id;
+    if (newChainId !== expectedId) {
+      setError(`Wrong network detected. Please switch to ${getExpectedChain().name}`);
       return;
     }
 
     if (window.ethereum) {
-      const walletClient = createWalletClient({ chain: mordor, transport: custom(window.ethereum) });
+      const walletClient = createWalletClient({ chain: getExpectedChain(), transport: custom(window.ethereum) });
       setWalletClient(walletClient);
     }
   };
@@ -129,7 +132,7 @@ export const WalletProvider = ({ children }) => {
     } else {
       setAccount(accounts[0]);
 
-      const publicClient = createPublicClient({ chain: mordor, transport: http() });
+      const publicClient = createPublicClient({ chain: getExpectedChain(), transport: http() });
       const balance = await publicClient.getBalance({ address: accounts[0] });
       setBalance(parseFloat(balance) / Math.pow(10, 18));
     }
