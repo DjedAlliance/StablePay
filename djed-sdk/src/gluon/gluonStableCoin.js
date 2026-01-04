@@ -76,7 +76,8 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
   }
 };
 
-// Function to allow User 1 (payer) to pay and User 2 DJED_ADDRESS) => {
+// Function to allow User 1 (payer) to pay and User 2 (receiver) to receive stablecoins
+export const buyScTx = (djed, payer, receiver, value, DJED_ADDRESS) => {
   // `receiver` will get the stablecoins
   // fission(amountIn, to, updateData)
   const data = djed.methods.fission(value, receiver, []).encodeABI();
@@ -85,8 +86,7 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
   return buildTx(payer, DJED_ADDRESS, value, data);
 };
 
-export const sellScTx = (djed, account, amount
-export const sellScTx = (djed, account, amount, UI, DJED_ADDRESS) => {
+export const sellScTx = (djed, account, amount, DJED_ADDRESS) => {
   // fusion(m, to)
   // m is likely the amount of Proton to burn? Or amount of Base to receive?
   // Assuming m is amount of Proton to burn based on typical burn patterns.
