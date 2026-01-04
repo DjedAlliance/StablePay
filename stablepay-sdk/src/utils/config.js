@@ -1,6 +1,7 @@
 // src/utils/config.js
 export const networksConfig = {
   'sepolia': {
+    protocol: 'djed',
     uri: 'https://ethereum-sepolia.publicnode.com/',
     chainId: 11155111,
     djedAddress: '0x624FcD0a1F9B5820c950FefD48087531d38387f4',
@@ -20,6 +21,7 @@ export const networksConfig = {
     feeUI: 0
   },
   'milkomeda-mainnet': {
+    protocol: 'djed',
     uri: 'https://rpc-mainnet-cardano-evm.c1.milkomeda.com',
     chainId: 2001,
     djedAddress: '0x67A30B399F5Ed499C1a6Bc0358FA6e42Ea4BCe76',
@@ -38,7 +40,8 @@ export const networksConfig = {
     },
     feeUI: 0
   },
-  'ethereum-classic': {  //Mordor Testnet details
+  'eprotocol: 'djed',
+    thereum-classic': {  //Mordor Testnet details
     uri: 'https://rpc.mordor.etccooperative.org',  // Mordor RPC
     chainId: 63,  
     djedAddress: '0xD4548F4b6d08852B56cdabC6be7Fd90953179d68',  //Mordor DJED contract

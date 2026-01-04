@@ -1,9 +1,10 @@
-import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx } from 'djed-sdk';
+import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx, Gluon, GluonStableCoin } from 'djed-sdk';
 
 export class Transaction {
-  constructor(networkUri, djedAddress) {
+  constructor(networkUri, djedAddress, protocol = 'djed') {
     this.networkUri = networkUri;
     this.djedAddress = djedAddress;
+    this.protocol = protocol;
   }
 
   async init() {
@@ -13,20 +14,37 @@ export class Transaction {
 
     try {
       this.web3 = await getWeb3(this.networkUri);
-      this.djedContract = getDjedContract(this.web3, this.djedAddress);
-      const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
-      const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
-      this.stableCoin = stableCoin;
-      this.reserveCoin = reserveCoin;
-      this.scDecimals = scDecimals;
-      this.rcDecimals = rcDecimals;
 
-      // Get the oracle contract
-      this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
-        getOracleContract(this.web3, addr, this.djedContract._address)
-      );
+      if (this.protocol === 'gluon') {
+        this.gluon = new Gluon(this.web3, this.djedAddress, null, null);
+        this.djedContract = this.gluon.contract;
+        
+        const { proton, neutron } = await this.gluon.getCoinContracts();
+        const { protonDecimals, neutronDecimals } = await this.gluon.getDecimals(proton, neutron);
+        
+        this.stableCoin = proton;
+        this.reserveCoin = neutron;
+        this.scDecimals = protonDecimals;
+        this.rcDecimals = neutronDecimals;
+        
+        this.oracleAddress = 'N/A'; 
+        this.oracleContract = null;
+      } else {
+        this.djedContract = getDjedContract(this.web3, this.djedAddress);
+        const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
+        const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
+        this.stableCoin = stableCoin;
+        this.reserveCoin = reserveCoin;
+        this.scDecimals = scDecimals;
+        this.rcDecimals = rcDecimals;
 
-      this.oracleAddress = this.oracleContract._address;
+        // Get the oracle contract
+        this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
+          getOracleContract(this.web3, addr, this.djedContract._address)
+        );
+
+        this.oracleAddress = this.oracleContract._address;
+      }
 
       console.log('Transaction initialized successfully');
     } catch (error) {
@@ -55,6 +73,12 @@ export class Transaction {
     if (typeof amountScaled !== 'string') {
       throw new Error("Amount must be a string");
     }
+
+    if (this.protocol === 'gluon') {
+      const result = await GluonStableCoin.tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
+      return result.totalBCScaled;
+    }
+
     try {
       const result = await tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
       return result.totalBCScaled; //converted ETH equivalent
@@ -71,6 +95,12 @@ export class Transaction {
     }
     try {
       console.log(`Building stablecoin purchase transaction from ${payer} to ${receiver} with value ${value}`);
+
+      if (this.protocol === 'gluon') {
+        const txData = await this.gluon.fission(payer, value, receiver);
+        console.log("Transaction built:", txData);
+        return txData;
+      }
 
       //Hardcoded UI address
       const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';

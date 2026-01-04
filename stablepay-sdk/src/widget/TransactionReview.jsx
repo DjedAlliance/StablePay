@@ -43,7 +43,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
         const newTransaction = new Transaction(
           networkConfig.uri,
-          networkConfig.djedAddress
+          networkConfig.djedAddress,
+          networkConfig.protocol
         );
         await newTransaction.init();
         setTransaction(newTransaction);
