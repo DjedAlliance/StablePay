@@ -133,7 +133,14 @@ export const verifyTx = (web3, hash) => {
     setTimeout(() => {
       web3.eth
         .getTransactionReceipt(hash)
-        .then((receipt) => res(receipt.status));
+        .then((receipt) => {
+          if (receipt) {
+            res(Boolean(receipt.status));
+          } else {
+            res(false);
+          }
+        })
+        .catch(() => res(false));
     }, CONFIRMATION_WAIT_PERIOD);
   });
 };

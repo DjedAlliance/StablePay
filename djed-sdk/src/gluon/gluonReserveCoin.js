@@ -80,7 +80,7 @@ export const buyRcTx = (djed, account, value, UI, DJED_ADDRESS) => {
   return buildTx(account, DJED_ADDRESS, value, data);
 };
 
-export const sellRcTx = (djed, account, amount, UI, DJED_ADDRESS) => {
+export const sellRcTx = (djed, account, amount, DJED_ADDRESS) => {
   const data = djed.methods
     .fusion(amount, account)
     .encodeABI();

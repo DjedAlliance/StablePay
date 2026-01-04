@@ -37,7 +37,8 @@ export const tradeDataPriceBuySc = async (djed, scDecimals, amountScaled) => {
       totalBCUnscaled,
     };
   } catch (error) {
-    console.log("error", error);
+    console.error("tradeDataPriceBuySc error", error);
+    throw error;
   }
 };
 
@@ -70,12 +71,12 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
       totalBCScaled: decimalScaling(totalBCAmount.toString(), BC_DECIMALS),
     };
   } catch (error) {
-    console.log("error", error);
+    console.error("tradeDataPriceSellSc error", error);
+    throw error;
   }
 };
 
-// Function to allow User 1 (payer) to pay and User 2 (receiver) to receive stablecoins
-export const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
+// Function to allow User 1 (payer) to pay and User 2 DJED_ADDRESS) => {
   // `receiver` will get the stablecoins
   // fission(amountIn, to, updateData)
   const data = djed.methods.fission(value, receiver, []).encodeABI();
@@ -84,6 +85,7 @@ export const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
   return buildTx(payer, DJED_ADDRESS, value, data);
 };
 
+export const sellScTx = (djed, account, amount
 export const sellScTx = (djed, account, amount, UI, DJED_ADDRESS) => {
   // fusion(m, to)
   // m is likely the amount of Proton to burn? Or amount of Base to receive?
@@ -112,27 +114,5 @@ export const calculateFutureScPrice = async ({
   stableCoinContract,
   scDecimalScalingFactor,
 }) => {
-  try {
-    // Gluon price calculation might be different.
-    // For now, returning current price as placeholder or implementing basic logic if known.
-    // Assuming similar logic but with different method names.
-    const [scTargetPrice, scSupply, reserve] = await Promise.all([
-      web3Promise(djedContract, "protonPriceInBase"), // Using current price as target for now
-      web3Promise(stableCoinContract, "totalSupply"),
-      web3Promise(djedContract, "reserve"),
-    ]);
-
-    const futureScSupply = BigInt(scSupply) + BigInt(amountSC);
-    const futureReserve = BigInt(reserve) + BigInt(amountBC);
-
-    if (futureScSupply === 0n) {
-      return scTargetPrice;
-    } else {
-      // Simplified future price calculation
-      // This logic depends heavily on the specific bonding curve or mechanism of Gluon
-      return scTargetPrice; 
-    }
-  } catch (error) {
-    console.log("calculateFutureScPrice error ", error);
-  }
+  throw new Error("calculateFutureScPrice not implemented for Gluon");
 };

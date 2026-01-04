@@ -1,4 +1,4 @@
-import gluonArtifact from "../artifacts/GluconABI.json";
+import gluonArtifact from "../artifacts/GluonABI.json";
 import coinArtifact from "../artifacts/CoinABI.json";
 import { convertInt, web3Promise, buildTx } from "../helpers";
 
