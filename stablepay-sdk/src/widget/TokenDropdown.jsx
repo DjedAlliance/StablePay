@@ -26,7 +26,9 @@ const TokenDropdown = () => {
         const networkConfig = networkSelector.getSelectedNetworkConfig();
         const transaction = new Transaction(
           networkConfig.uri,
-          networkConfig.djedAddress
+          networkConfig.djedAddress,
+          networkConfig.protocol,
+          networkConfig.routerAddress
         );
         await transaction.init();
 

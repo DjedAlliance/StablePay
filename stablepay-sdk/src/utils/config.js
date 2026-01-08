@@ -59,5 +59,26 @@ export const networksConfig = {
       }
     },
     feeUI: 0
+  },
+  'gluon-testnet': {
+    protocol: 'gluon',
+    uri: 'http://localhost:8545',
+    chainId: 31337,
+    djedAddress: '0x0000000000000000000000000000000000000000', // Replace with deployed Gluon address
+    routerAddress: '0x1111111111111111111111111111111111111111', // Replace with deployed Router address
+    tokens: {
+      stablecoin: {
+        symbol: 'NEU',
+        address: '0x0000000000000000000000000000000000000000', // Neutron address
+        decimals: 18,
+        isDirectTransfer: true
+      },
+      native: {
+        symbol: 'ETH',
+        decimals: 18,
+        isNative: true
+      }
+    },
+    feeUI: 0
   }
 };

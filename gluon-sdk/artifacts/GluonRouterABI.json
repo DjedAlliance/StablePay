@@ -1,0 +1,38 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_gluon",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "payWithFission",
+    "inputs": [
+      {
+        "name": "merchant",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "updateData",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+      "type": "function",
+      "name": "gluon",
+      "inputs": [],
+      "outputs": [{"name": "", "type": "address"}],
+      "stateMutability": "view"
+  }
+]

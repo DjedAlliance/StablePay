@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNetwork } from "../contexts/NetworkContext";
 import { useWallet } from "../contexts/WalletContext";
 import { Transaction } from "../core/Transaction";
-import { parseEther, encodeFunctionData, parseUnits } from "viem"; 
+import { parseEther, encodeFunctionData, parseUnits, formatUnits } from "viem"; 
 import styles from "../styles/PricingCard.css";
 
 const STABLECOIN_CONTRACT_ADDRESS = "0xdc86935A9597aA3A9008d2f26232233043091284"; 
@@ -44,7 +44,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
         const newTransaction = new Transaction(
           networkConfig.uri,
           networkConfig.djedAddress,
-          networkConfig.protocol
+          networkConfig.protocol,
+          networkConfig.routerAddress
         );
         await newTransaction.init();
         setTransaction(newTransaction);
@@ -165,7 +166,30 @@ const TransactionReview = ({ onTransactionComplete }) => {
       });
 
       setTxHash(txHash);
-      setMessage(`✅ Transaction sent!`);
+
+      let successMsg = `✅ Transaction sent!`;
+      if (transaction.protocol === 'gluon' && selectedToken.key === 'native') {
+         try {
+           const amountIn = String(tradeDataBuySc || "0"); 
+           const reserve = await transaction.gluon.contract.methods.reserve().call();
+           const neutronSupply = await transaction.stableCoin.methods.totalSupply().call(); 
+           const protonSupply = await transaction.reserveCoin.methods.totalSupply().call();
+           const fissionFee = await transaction.gluon.contract.methods.FISSION_FEE().call();
+           
+           const { neutronOut, protonOut } = transaction.gluon.calculateFission(
+               amountIn, reserve, neutronSupply, protonSupply, fissionFee, 0, 0
+           );
+           
+           const nVal = formatUnits(BigInt(neutronOut.toString()), contextTransactionDetails.stableCoinDecimals);
+           const pVal = formatUnits(BigInt(protonOut.toString()), contextTransactionDetails.reserveCoinDecimals);
+           
+           successMsg = `Payment Sent! Fission Complete. Merchant received ${parseFloat(nVal).toFixed(2)} Neutrons. You kept ${parseFloat(pVal).toFixed(2)} speculative Protons.`;
+         } catch(e) {
+           console.error("UI Calculation Error", e);
+           successMsg = `Payment Sent! Fission Complete. Merchant received Neutrons. You kept Protons.`;
+         }
+      } 
+      setMessage(successMsg);
       
       // Call the callback with transaction details
       if (onTransactionComplete) {

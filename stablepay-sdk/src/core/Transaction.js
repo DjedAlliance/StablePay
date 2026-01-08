@@ -1,10 +1,14 @@
-import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx, Gluon, GluonStableCoin } from 'djed-sdk';
+import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx } from 'djed-sdk';
+import { Gluon } from '../../../gluon-sdk/src/gluon';
+import GluonABI from '../../../gluon-sdk/artifacts/GluonABI.json';
+import GluonRouterABI from '../../../gluon-sdk/artifacts/GluonRouterABI.json';
 
 export class Transaction {
-  constructor(networkUri, djedAddress, protocol = 'djed') {
+  constructor(networkUri, djedAddress, protocol = 'djed', routerAddress = null) {
     this.networkUri = networkUri;
     this.djedAddress = djedAddress;
     this.protocol = protocol;
+    this.routerAddress = routerAddress;
   }
 
   async init() {
@@ -16,16 +20,17 @@ export class Transaction {
       this.web3 = await getWeb3(this.networkUri);
 
       if (this.protocol === 'gluon') {
-        this.gluon = new Gluon(this.web3, this.djedAddress, null, null);
+        this.gluon = new Gluon(this.web3, this.djedAddress, GluonABI, this.routerAddress, GluonRouterABI);
         this.djedContract = this.gluon.contract;
         
         const { proton, neutron } = await this.gluon.getCoinContracts();
         const { protonDecimals, neutronDecimals } = await this.gluon.getDecimals(proton, neutron);
         
-        this.stableCoin = proton;
-        this.reserveCoin = neutron;
-        this.scDecimals = protonDecimals;
-        this.rcDecimals = neutronDecimals;
+        // Neutron is Stable, Proton is Reserve/Volatile
+        this.stableCoin = neutron;
+        this.reserveCoin = proton;
+        this.scDecimals = neutronDecimals;
+        this.rcDecimals = protonDecimals;
         
         this.oracleAddress = 'N/A'; 
         this.oracleContract = null;
@@ -55,6 +60,7 @@ export class Transaction {
 
   getBlockchainDetails() {
     return {
+      protocol: this.protocol,
       web3Available: !!this.web3,
       djedContractAvailable: !!this.djedContract,
       stableCoinAddress: this.stableCoin ? this.stableCoin._address : 'N/A',
@@ -75,8 +81,12 @@ export class Transaction {
     }
 
     if (this.protocol === 'gluon') {
-      const result = await GluonStableCoin.tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
-      return result.totalBCScaled;
+      const reserve = await this.gluon.contract.methods.reserve().call();
+      const neutronSupply = await this.stableCoin.methods.totalSupply().call(); 
+      const fissionFee = await this.gluon.contract.methods.FISSION_FEE().call();
+      
+      const input = this.gluon.calculateRequiredInputForNeutrons(amountScaled, reserve, neutronSupply, fissionFee);
+      return input.toString();
     }
 
     try {
