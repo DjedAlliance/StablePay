@@ -7,7 +7,7 @@ export class Wallet {
 
   async connect() {
     if (!window.ethereum) {
-      throw new Error('No Web3 provider found');
+      throw new Error('No Ethereum provider found');
     }
 
     const accounts = await window.ethereum.request({
