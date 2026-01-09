@@ -25,7 +25,7 @@ export const WalletProvider = ({ children }) => {
 
   const connectWallet = useCallback(async () => {
     if (!window.ethereum) {
-      setError('Please install MetaMask or another Web3 wallet');
+      setError('Please install MetaMask or another Ethereum wallet');
       return false;
     }
 
@@ -65,7 +65,7 @@ export const WalletProvider = ({ children }) => {
                       decimals: 18,
                     },
                     rpcUrls: ['https://rpc.mordor.etccooperative.org'],
-                    blockExplorerUrls: ['https://etc-mordor.blockscout.com/'],
+                    blockExplorerUrls: ['https://etc.blockscout.com/mordor'],
                   },
                 ],
               });
