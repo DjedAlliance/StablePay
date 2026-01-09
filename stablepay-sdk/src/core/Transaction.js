@@ -12,9 +12,14 @@ export class Transaction {
     }
 
     try {
-      this.web3 = await getWeb3(this.networkUri);
-      this.djedContract = getDjedContract(this.web3, this.djedAddress);
-      const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
+      // getWeb3 now returns {provider, signer}
+      const { provider, signer } = await getWeb3(this.networkUri);
+      this.provider = provider;
+      this.signer = signer;
+      
+      // Use signer for contract interactions (allows write operations)
+      this.djedContract = getDjedContract(this.signer, this.djedAddress);
+      const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.signer);
       const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
       this.stableCoin = stableCoin;
       this.reserveCoin = reserveCoin;
@@ -23,10 +28,10 @@ export class Transaction {
 
       // Get the oracle contract
       this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
-        getOracleContract(this.web3, addr, this.djedContract._address)
+        getOracleContract(this.signer, addr, this.djedContract.target)
       );
 
-      this.oracleAddress = this.oracleContract._address;
+      this.oracleAddress = this.oracleContract.target;
 
       console.log('Transaction initialized successfully');
     } catch (error) {
@@ -37,10 +42,11 @@ export class Transaction {
 
   getBlockchainDetails() {
     return {
-      web3Available: !!this.web3,
+      providerAvailable: !!this.provider,
+      signerAvailable: !!this.signer,
       djedContractAvailable: !!this.djedContract,
-      stableCoinAddress: this.stableCoin ? this.stableCoin._address : 'N/A',
-      reserveCoinAddress: this.reserveCoin ? this.reserveCoin._address : 'N/A',
+      stableCoinAddress: this.stableCoin ? this.stableCoin.target : 'N/A',
+      reserveCoinAddress: this.reserveCoin ? this.reserveCoin.target : 'N/A',
       stableCoinDecimals: this.scDecimals,
       reserveCoinDecimals: this.rcDecimals,
       oracleAddress: this.oracleAddress || 'N/A',
