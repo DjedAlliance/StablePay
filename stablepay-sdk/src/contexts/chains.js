@@ -16,7 +16,7 @@ export const mordor = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: 'BlockScout', url: 'https://blockscout.com/etc/mordor' },
+    default: { name: 'BlockScout', url: 'https://etc.blockscout.com/mordor' },
   },
   testnet: true,
 });

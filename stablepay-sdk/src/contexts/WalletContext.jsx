@@ -65,7 +65,7 @@ export const WalletProvider = ({ children }) => {
                       decimals: 18,
                     },
                     rpcUrls: ['https://rpc.mordor.etccooperative.org'],
-                    blockExplorerUrls: ['https://etc-mordor.blockscout.com/'],
+                    blockExplorerUrls: ['https://etc.blockscout.com/mordor'],
                   },
                 ],
               });
