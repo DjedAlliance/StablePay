@@ -62,6 +62,9 @@ export const WalletProvider = ({ children }) => {
   const selectedChain = selectedNetwork ? getChainByNetworkKey(selectedNetwork) : null;
   const expectedChainId = selectedChain ? selectedChain.id : null;
 
+  const handleAccountsChangedRef = useRef(null);
+  const handleChainChangedRef = useRef(null);
+
   const disconnectWalletInternal = useCallback(() => {
     setWalletClient(null);
     setPublicClient(null);
@@ -90,31 +93,52 @@ export const WalletProvider = ({ children }) => {
     }
   }, [selectedChain, expectedChainId, selectedNetwork]);
 
+  handleChainChangedRef.current = handleChainChanged;
+
   const handleAccountsChanged = useCallback(async (accounts) => {
     if (accounts.length === 0) {
       disconnectWalletInternal();
       if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
+        const accountsHandler = handleAccountsChangedRef.current;
+        const chainHandler = handleChainChangedRef.current;
+        if (accountsHandler) {
+          window.ethereum.removeListener('accountsChanged', accountsHandler);
+        }
+        if (chainHandler) {
+          window.ethereum.removeListener('chainChanged', chainHandler);
+        }
       }
     } else {
       setAccount(accounts[0]);
       if (selectedChain) {
-        const newPublicClient = createPublicClient({ chain: selectedChain, transport: http() });
-        setPublicClient(newPublicClient);
-        const balance = await newPublicClient.getBalance({ address: accounts[0] });
-        setBalance(parseFloat(balance) / Math.pow(10, 18));
+        try {
+          const newPublicClient = createPublicClient({ chain: selectedChain, transport: http() });
+          setPublicClient(newPublicClient);
+          const balance = await newPublicClient.getBalance({ address: accounts[0] });
+          setBalance(parseFloat(balance) / Math.pow(10, 18));
+        } catch (error) {
+          console.error('Error fetching balance:', error);
+          setBalance(null);
+        }
       }
     }
-  }, [selectedChain, disconnectWalletInternal, handleChainChanged]);
+  }, [selectedChain, disconnectWalletInternal]);
+
+  handleAccountsChangedRef.current = handleAccountsChanged;
 
   const disconnectWallet = useCallback(() => {
     disconnectWalletInternal();
     if (window.ethereum) {
-      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum.removeListener('chainChanged', handleChainChanged);
+      const accountsHandler = handleAccountsChangedRef.current;
+      const chainHandler = handleChainChangedRef.current;
+      if (accountsHandler) {
+        window.ethereum.removeListener('accountsChanged', accountsHandler);
+      }
+      if (chainHandler) {
+        window.ethereum.removeListener('chainChanged', chainHandler);
+      }
     }
-  }, [disconnectWalletInternal, handleAccountsChanged, handleChainChanged]);
+  }, [disconnectWalletInternal]);
 
   const connectPublicClient = useCallback(() => {
     if (selectedChain) {
@@ -163,9 +187,16 @@ export const WalletProvider = ({ children }) => {
 
       const newPublicClient = createPublicClient({ chain: selectedChain, transport: http() });
       setPublicClient(newPublicClient);
-      const balance = await newPublicClient.getBalance({ address: accounts[0] });
-      setBalance(parseFloat(balance) / Math.pow(10, 18));
+      try {
+        const balance = await newPublicClient.getBalance({ address: accounts[0] });
+        setBalance(parseFloat(balance) / Math.pow(10, 18));
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+        setBalance(null);
+      }
 
+      handleAccountsChangedRef.current = handleAccountsChanged;
+      handleChainChangedRef.current = handleChainChanged;
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', handleChainChanged);
 
@@ -193,7 +224,8 @@ export const WalletProvider = ({ children }) => {
       if (currentChainId !== expectedChainId) {
         setError(null);
         await switchToNetwork(selectedNetwork);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const NETWORK_SWITCH_DELAY_MS = 500;
+        await new Promise(resolve => setTimeout(resolve, NETWORK_SWITCH_DELAY_MS));
         
         const newChainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
         const newChainId = parseInt(newChainIdHex, 16);
@@ -224,13 +256,19 @@ export const WalletProvider = ({ children }) => {
         prevNetworkRef.current !== selectedNetwork && 
         account) {
       disconnectWalletInternal();
-    if (window.ethereum) {
-      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum.removeListener('chainChanged', handleChainChanged);
-    }
+      if (window.ethereum) {
+        const accountsHandler = handleAccountsChangedRef.current;
+        const chainHandler = handleChainChangedRef.current;
+        if (accountsHandler) {
+          window.ethereum.removeListener('accountsChanged', accountsHandler);
+        }
+        if (chainHandler) {
+          window.ethereum.removeListener('chainChanged', chainHandler);
+        }
+      }
     }
     prevNetworkRef.current = selectedNetwork;
-  }, [selectedNetwork, account, disconnectWalletInternal, handleAccountsChanged, handleChainChanged]);
+  }, [selectedNetwork, account, disconnectWalletInternal]);
 
   useEffect(() => {
     connectPublicClient();

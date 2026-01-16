@@ -31,13 +31,21 @@ export class Transaction {
       } catch (contractError) {
         console.error('[Transaction] Error fetching contract details:', contractError);
         if (contractError.message && contractError.message.includes('execution reverted')) {
+          const getNetworkInfo = (uri) => {
+            if (uri.includes('milkomeda')) return { name: 'Milkomeda', chainId: '2001' };
+            if (uri.includes('mordor')) return { name: 'Mordor Testnet', chainId: '63' };
+            if (uri.includes('sepolia')) return { name: 'Sepolia', chainId: '11155111' };
+            if (uri.includes('etc.rivet.link')) return { name: 'Ethereum Classic', chainId: '61' };
+            return { name: 'the selected network', chainId: 'unknown' };
+          };
+          const { name: networkName, chainId } = getNetworkInfo(this.networkUri);
           throw new Error(
-            `Failed to interact with Djed contract at ${this.djedAddress} on Ethereum Classic.\n\n` +
+            `Failed to interact with Djed contract at ${this.djedAddress} on ${networkName}.\n\n` +
             `Possible causes:\n` +
             `- The contract address may be incorrect\n` +
-            `- The contract may not be deployed on Ethereum Classic mainnet\n` +
+            `- The contract may not be deployed on ${networkName}\n` +
             `- The contract may not be a valid Djed contract\n\n` +
-            `Please verify the contract address is correct for Ethereum Classic mainnet (Chain ID: 61).`
+            `Please verify the contract address is correct for ${networkName} (Chain ID: ${chainId}).`
           );
         }
         throw contractError;
@@ -45,9 +53,13 @@ export class Transaction {
     } catch (error) {
       console.error('[Transaction] Error initializing transaction:', error);
       if (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
-        const networkName = this.networkUri.includes('milkomeda') ? 'Milkomeda' : 
-                           this.networkUri.includes('mordor') ? 'Mordor' :
-                           this.networkUri.includes('sepolia') ? 'Sepolia' : 'the selected network';
+        const getNetworkName = (uri) => {
+          if (uri.includes('milkomeda')) return 'Milkomeda';
+          if (uri.includes('mordor')) return 'Mordor';
+          if (uri.includes('sepolia')) return 'Sepolia';
+          return 'the selected network';
+        };
+        const networkName = getNetworkName(this.networkUri);
         throw new Error(
           `Failed to connect to ${networkName} RPC endpoint: ${this.networkUri}\n\n` +
           `Possible causes:\n` +
