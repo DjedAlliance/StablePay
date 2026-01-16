@@ -3,9 +3,7 @@ import { useNetwork } from "../contexts/NetworkContext";
 import { useWallet } from "../contexts/WalletContext";
 import { Transaction } from "../core/Transaction";
 import { parseEther, encodeFunctionData, parseUnits } from "viem"; 
-import styles from "../styles/PricingCard.css";
-
-const STABLECOIN_CONTRACT_ADDRESS = "0xdc86935A9597aA3A9008d2f26232233043091284"; 
+import styles from "../styles/PricingCard.css"; 
 
 const TransactionReview = ({ onTransactionComplete }) => {
   const {
@@ -22,6 +20,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
     walletClient,
     publicClient,
     isConnecting,
+    ensureCorrectNetwork,
+    expectedChainId,
   } = useWallet();
 
   const [transaction, setTransaction] = useState(null);
@@ -31,6 +31,14 @@ const TransactionReview = ({ onTransactionComplete }) => {
   const [txHash, setTxHash] = useState(null);
   const [error, setError] = useState(null);
   const [isErrorDetailsVisible, setIsErrorDetailsVisible] = useState(false);
+
+  useEffect(() => {
+    setTxData(null);
+    setTradeDataBuySc(null);
+    setMessage("");
+    setError(null);
+    setTxHash(null);
+  }, [selectedNetwork, selectedToken]);
 
   useEffect(() => {
     const initializeTransaction = async () => {
@@ -83,10 +91,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
   }
 
   const handleConnectWallet = async () => {
-    const success = await connectWallet();
-    if (success) {
-      console.log("Wallet connected:", account);
-    }
+    await connectWallet();
   };
 
   const handleSendTransaction = async () => {
@@ -96,6 +101,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
     }
 
     try {
+      setTxData(null);
+      setError(null);
       setMessage("⏳ Preparing transaction...");
 
       const receiver = contextTransactionDetails.receivingAddress;
@@ -104,14 +111,28 @@ const TransactionReview = ({ onTransactionComplete }) => {
       if (selectedToken.key === "native") {
         const UI = "0x0232556C83791b8291E9b23BfEa7d67405Bd9839";
         const amountToSend = tradeDataBuySc || "0";
+        const valueInWei = parseEther(String(amountToSend));
 
         builtTx = await transaction.buyStablecoins(
           account,
           receiver,
-          parseEther(String(amountToSend)),
+          valueInWei,
           UI
         );
+
+        builtTx = {
+          ...builtTx,
+          value: valueInWei,
+          account: account,
+        };
       } else {
+        const networkConfig = networkSelector.getSelectedNetworkConfig();
+        const stablecoinAddress = networkConfig?.tokens?.stablecoin?.address;
+        
+        if (!stablecoinAddress) {
+          throw new Error('Stablecoin address not found in network configuration');
+        }
+
         const amountToSend = contextTransactionDetails.amount
           ? parseUnits(
               String(contextTransactionDetails.amount),
@@ -120,7 +141,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
           : "0";
 
         builtTx = {
-          to: STABLECOIN_CONTRACT_ADDRESS,
+          to: stablecoinAddress,
+          value: 0n,
           data: encodeFunctionData({
             abi: [
               {
@@ -150,15 +172,58 @@ const TransactionReview = ({ onTransactionComplete }) => {
   };
 
   const handleBuySc = async () => {
+    setError(null);
+    
     try {
-      if (!walletClient || !account || !txData) {
-        setMessage("❌ Wallet client, account, or transaction data is missing");
+      if (!account || !txData) {
+        setMessage("❌ Wallet account or transaction data is missing");
+        return;
+      }
+
+      if (!selectedNetwork) {
+        setMessage("❌ Network not selected");
+        return;
+      }
+
+      const networkConfig = networkSelector.getSelectedNetworkConfig();
+      if (!networkConfig) {
+        setMessage("❌ Network configuration not found");
+        return;
+      }
+
+      setMessage("⏳ Verifying network...");
+
+      const freshWalletClient = await ensureCorrectNetwork();
+      if (!freshWalletClient) {
+        setMessage("❌ Failed to switch to correct network. Please approve the network switch in MetaMask and try again.");
+        return;
+      }
+
+      if (!window.ethereum) {
+        setMessage("❌ MetaMask not available");
+        return;
+      }
+
+      const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+      const currentChainId = parseInt(chainIdHex, 16);
+
+      if (currentChainId !== networkConfig.chainId) {
+        const errorMsg = `Network mismatch. MetaMask is on chain ${currentChainId}, but ${selectedNetwork} requires chain ${networkConfig.chainId}. Please switch networks in MetaMask.`;
+        setMessage(`❌ ${errorMsg}`);
+        setError(new Error(errorMsg));
+        return;
+      }
+
+      if (freshWalletClient.chain.id !== networkConfig.chainId) {
+        const errorMsg = `Wallet client chain mismatch. Wallet client is on chain ${freshWalletClient.chain.id}, but expected ${networkConfig.chainId}.`;
+        setMessage(`❌ ${errorMsg}`);
+        setError(new Error(errorMsg));
         return;
       }
 
       setMessage("⏳ Sending transaction...");
 
-      const txHash = await walletClient.sendTransaction({
+      const txHash = await freshWalletClient.sendTransaction({
         ...txData,
         account: account,
       });
@@ -166,7 +231,6 @@ const TransactionReview = ({ onTransactionComplete }) => {
       setTxHash(txHash);
       setMessage(`✅ Transaction sent!`);
       
-      // Call the callback with transaction details
       if (onTransactionComplete) {
         onTransactionComplete({
           txHash,
@@ -180,6 +244,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
     } catch (error) {
       setError(error);
       setMessage(`❌ Transaction failed.`);
+      console.error('Transaction error:', error);
     }
   };
 
@@ -187,7 +252,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
     if (!txHash || !selectedNetwork) return null;
 
     const explorerBaseUrls = {
-      "ethereum-classic": "https://etc-mordor.blockscout.com/tx/",
+      "ethereum-classic": "https://blockscout.com/etc/mainnet/tx/",
       "sepolia": "https://sepolia.etherscan.io/tx/",
       "milkomeda-mainnet": "https://explorer-mainnet-cardano-evm.c1.milkomeda.com/tx/",
     };
@@ -259,8 +324,9 @@ const TransactionReview = ({ onTransactionComplete }) => {
       {txHash && (
   <div className={styles.transactionLink}>
     ✅ Transaction Hash:{" "}
+          {getExplorerUrl() ? (
     <a
-      href={`https://blockscout.com/etc/mordor/tx/${txHash}`}
+              href={getExplorerUrl()}
       target="_blank"
       rel="noopener noreferrer"
       className={styles.explorerLink}
@@ -274,6 +340,11 @@ const TransactionReview = ({ onTransactionComplete }) => {
     >
       {txHash.slice(0, 6)}...{txHash.slice(-6)}
     </a>
+          ) : (
+            <span style={{ wordBreak: "break-word" }}>
+              {txHash}
+            </span>
+          )}
   </div>
 )}
 

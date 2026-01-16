@@ -14,6 +14,8 @@ export class Transaction {
     try {
       this.web3 = await getWeb3(this.networkUri);
       this.djedContract = getDjedContract(this.web3, this.djedAddress);
+      
+      try {
       const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
       const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
       this.stableCoin = stableCoin;
@@ -21,16 +23,40 @@ export class Transaction {
       this.scDecimals = scDecimals;
       this.rcDecimals = rcDecimals;
 
-      // Get the oracle contract
       this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
         getOracleContract(this.web3, addr, this.djedContract._address)
       );
 
       this.oracleAddress = this.oracleContract._address;
-
-      console.log('Transaction initialized successfully');
+      } catch (contractError) {
+        console.error('[Transaction] Error fetching contract details:', contractError);
+        if (contractError.message && contractError.message.includes('execution reverted')) {
+          throw new Error(
+            `Failed to interact with Djed contract at ${this.djedAddress} on Ethereum Classic.\n\n` +
+            `Possible causes:\n` +
+            `- The contract address may be incorrect\n` +
+            `- The contract may not be deployed on Ethereum Classic mainnet\n` +
+            `- The contract may not be a valid Djed contract\n\n` +
+            `Please verify the contract address is correct for Ethereum Classic mainnet (Chain ID: 61).`
+          );
+        }
+        throw contractError;
+      }
     } catch (error) {
-      console.error('Error initializing transaction:', error);
+      console.error('[Transaction] Error initializing transaction:', error);
+      if (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
+        const networkName = this.networkUri.includes('milkomeda') ? 'Milkomeda' : 
+                           this.networkUri.includes('mordor') ? 'Mordor' :
+                           this.networkUri.includes('sepolia') ? 'Sepolia' : 'the selected network';
+        throw new Error(
+          `Failed to connect to ${networkName} RPC endpoint: ${this.networkUri}\n\n` +
+          `Possible causes:\n` +
+          `- The RPC endpoint may be temporarily unavailable\n` +
+          `- DNS resolution issue (check your internet connection)\n` +
+          `- Network firewall blocking the connection\n\n` +
+          `Please try again in a few moments or check the network status.`
+        );
+      }
       throw error;
     }
   }
@@ -57,28 +83,22 @@ export class Transaction {
     }
     try {
       const result = await tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
-      return result.totalBCScaled; //converted ETH equivalent
+      return result.totalBCScaled;
     } catch (error) {
       console.error("Error fetching trade data for buying stablecoins: ", error);
       throw error;
     }
   }
 
-  // use buyScTx directly
   async buyStablecoins(payer, receiver, value) {
     if (!this.djedContract) {
       throw new Error("DJED contract is not initialized");
     }
     try {
-      console.log(`Building stablecoin purchase transaction from ${payer} to ${receiver} with value ${value}`);
-
-      //Hardcoded UI address
       const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
 
-      //buyScTx from djed-sdk
       const txData = await buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
 
-      console.log("Transaction built:", txData);
       return txData;
     } catch (error) {
       console.error("Error executing buyStablecoins transaction: ", error);
