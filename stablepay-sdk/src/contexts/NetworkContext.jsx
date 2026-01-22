@@ -1,4 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useMemo
+} from 'react';
 import { TokenSelector } from '../core/TokenSelector';
 
 const NetworkContext = createContext();
@@ -17,7 +23,7 @@ export const NetworkProvider = ({ children, networkSelector }) => {
   const selectNetwork = (networkKey) => {
     if (networkSelector.selectNetwork(networkKey)) {
       setSelectedNetwork(networkKey);
-      resetState(); 
+      resetState();
       return true;
     }
     return false;
@@ -43,18 +49,27 @@ export const NetworkProvider = ({ children, networkSelector }) => {
     setSelectedNetwork(networkSelector.selectedNetwork);
   }, [networkSelector.selectedNetwork]);
 
+  // ✅ FIX: Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    networkSelector,
+    tokenSelector,
+    selectedNetwork,
+    selectedToken,
+    transactionDetails,
+    setTransactionDetails,
+    selectNetwork,
+    selectToken,
+    resetSelections
+  }), [
+    networkSelector,
+    tokenSelector,
+    selectedNetwork,
+    selectedToken,
+    transactionDetails
+  ]);
+
   return (
-    <NetworkContext.Provider value={{ 
-      networkSelector,
-      tokenSelector,
-      selectedNetwork,
-      selectedToken,
-      transactionDetails,
-      setTransactionDetails,
-      selectNetwork,
-      selectToken,
-      resetSelections
-    }}>
+    <NetworkContext.Provider value={contextValue}>
       {children}
     </NetworkContext.Provider>
   );
