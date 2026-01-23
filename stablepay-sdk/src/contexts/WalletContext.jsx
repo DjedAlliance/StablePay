@@ -218,7 +218,7 @@ export const WalletProvider = ({ children }) => {
     }
 
     try {
-      const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+      const chainIdHex = window.ethereum.chainId || await window.ethereum.request({ method: 'eth_chainId' });
       const currentChainId = parseInt(chainIdHex, 16);
 
       if (currentChainId !== expectedChainId) {
