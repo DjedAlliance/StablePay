@@ -104,6 +104,7 @@ export function calculateBcUsdEquivalent(coinsDetails, amountFloat) {
   const adaPerUsd = parseFloat(
     coinsDetails?.scaledScExchangeRate.replaceAll(",", "")
   );
+  if (!adaPerUsd || adaPerUsd === 0) return "0";
   const eqPrice = (1e6 * amountFloat) / adaPerUsd;
   return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
 }
