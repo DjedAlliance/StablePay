@@ -1,3 +1,6 @@
+import { createWalletClient, custom } from 'viem';
+import { mainnet, sepolia } from 'viem/chains';
+
 export class Wallet {
   constructor(chainId) {
     this.chainId = chainId;
