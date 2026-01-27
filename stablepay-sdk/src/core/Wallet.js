@@ -37,7 +37,11 @@ export class Wallet {
       11155111: sepolia,
       // Add other chains as needed
     };
-    return chains[chainId];
+    const chain = chains[chainId];
+      if (!chain) {
+        throw new Error(`Unsupported chainId: ${chainId}`);
+      }
+      return chain;
   }
 
   async disconnect() {
