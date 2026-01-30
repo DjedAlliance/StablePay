@@ -120,7 +120,7 @@ export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
   amountUSD > TRANSACTION_USD_LIMIT &&
   BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
-export const promiseTx = (isWalletConnected, tx, Singer) => {
+export const promiseTx = (isWalletConnected, tx, singer) => {
   if (!isWalletConnected) {
     return Promise.reject(new Error("Metamask not connected!"));
   }
