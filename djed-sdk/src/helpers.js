@@ -115,6 +115,9 @@ export function calculateBcUsdEquivalent(coinsDetails, amountStr) {
   const amount = decimalToBigInt(amountStr.toString(), 6);
 
   const adaPerUsd = decimalToBigInt(coinsDetails.scaledScExchangeRate, 6);
+  if (adaPerUsd === 0n) {
+    throw new Error("scaledScExchangeRate must be > 0");
+  }
 
   const eqPrice = (amount * 1_000_000n) / adaPerUsd;
 
