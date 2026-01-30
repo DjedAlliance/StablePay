@@ -149,7 +149,8 @@ export function getScAdaEquivalent(coinsDetails, amountStr) {
 
   const adaPerSc = decimalToBigInt(coinsDetails.scaledPriceSc, 6);
 
-  const eqPrice = amount * adaPerSc;
+  const eqPrice = (amount * adaPerSc) / 1_000_000n;
 
   return decimalScaling(eqPrice.toString(), 6);
+}
 }
