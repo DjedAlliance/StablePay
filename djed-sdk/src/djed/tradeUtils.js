@@ -120,14 +120,14 @@ export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
   amountUSD > TRANSACTION_USD_LIMIT &&
   BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
-export const promiseTx = (isWalletConnected, tx, web3) => {
+export const promiseTx = (isWalletConnected, tx, Singer) => {
   if (!isWalletConnected) {
     return Promise.reject(new Error("Metamask not connected!"));
   }
-  if (!web3?.eth) {
-    return Promise.reject(new Error("Couldn't get Web3 provider"));
+  if (!signer) {
+    return Promise.reject(new Error("Couldn't get Signer"));
   }
-  return web3.eth.sendTransaction(tx);
+  return signer.sendTransaction(tx);
 };
 
 export const verifyTx = (web3, hash) => {
