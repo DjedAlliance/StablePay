@@ -27,9 +27,8 @@ function intersperseCommas(s) {
   let newString = s.replace(/(.{3})/g, "$1,");
   if (s.length % 3 === 0) {
     return newString.slice(0, newString.length - 1);
-  } else {
-    return newString;
   }
+  return newString;
 }
 
 export function decimalScaling(unscaledString, decimals, show = 6) {
@@ -90,42 +89,64 @@ export function scaledUnscaledPromise(promise, scaling) {
 
 export function percentageScale(value, scaling, showSymbol = false) {
   const calculatedValue = decimalScaling(value.toString(10), scaling - 2, 2);
-  if (showSymbol) {
-    return calculatedValue + "%";
-  }
-  return calculatedValue;
+  return showSymbol ? calculatedValue + "%" : calculatedValue;
 }
 
 export function percentScaledPromise(promise, scaling) {
   return promise.then((value) => percentageScale(value, scaling, true));
 }
+
+function decimalToBigInt(valueStr, decimals) {
+  const s = valueStr.replaceAll(",", "");
+  const dot = s.indexOf(".");
+
+  if (dot === -1) {
+    return BigInt(s + "0".repeat(decimals));
+  }
+
+  const intPart = s.slice(0, dot);
+  const fracPart = s.slice(dot + 1);
+
+  return BigInt(intPart + fracPart.padEnd(decimals, "0").slice(0, decimals));
+}
+
 // currency conversions:
-export function calculateBcUsdEquivalent(coinsDetails, amountFloat) {
-  const adaPerUsd = parseFloat(
-    coinsDetails?.scaledScExchangeRate.replaceAll(",", "")
-  );
-  const eqPrice = (1e6 * amountFloat) / adaPerUsd;
-  return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
+export function calculateBcUsdEquivalent(coinsDetails, amountStr) {
+  const amount = decimalToBigInt(amountStr.toString(), 6);
+
+  const adaPerUsd = decimalToBigInt(coinsDetails.scaledScExchangeRate, 6);
+
+  const eqPrice = (amount * 1_000_000n) / adaPerUsd;
+
+  return decimalScaling(eqPrice.toString(), 6);
 }
 
-export function getBcUsdEquivalent(coinsDetails, amountFloat) {
-  return "$" + calculateBcUsdEquivalent(coinsDetails, amountFloat);
+export function getBcUsdEquivalent(coinsDetails, amountStr) {
+  return "$" + calculateBcUsdEquivalent(coinsDetails, amountStr);
 }
 
-export function calculateRcUsdEquivalent(coinsDetails, amountFloat) {
-  const adaPerRc = parseFloat(coinsDetails?.scaledSellPriceRc);
-  const adaPerUsd = parseFloat(
-    coinsDetails?.scaledScExchangeRate.replaceAll(",", "")
-  );
-  const eqPrice = (1e6 * amountFloat * adaPerRc) / adaPerUsd;
-  return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
-}
-export function getRcUsdEquivalent(coinsDetails, amountFloat) {
-  return "$" + calculateRcUsdEquivalent(coinsDetails, amountFloat);
+export function calculateRcUsdEquivalent(coinsDetails, amountStr) {
+  const amount = decimalToBigInt(amountStr.toString(), 6);
+
+  const adaPerRc = decimalToBigInt(coinsDetails.scaledSellPriceRc, 6);
+
+  const adaPerUsd = decimalToBigInt(coinsDetails.scaledScExchangeRate, 6);
+
+  const eqPrice = (amount * adaPerRc) / adaPerUsd;
+
+  return decimalScaling(eqPrice.toString(), 6);
 }
 
-export function getScAdaEquivalent(coinsDetails, amountFloat) {
-  const adaPerSc = parseFloat(coinsDetails?.scaledPriceSc.replaceAll(",", ""));
-  const eqPrice = 1e6 * amountFloat * adaPerSc;
-  return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
+export function getRcUsdEquivalent(coinsDetails, amountStr) {
+  return "$" + calculateRcUsdEquivalent(coinsDetails, amountStr);
+}
+
+export function getScAdaEquivalent(coinsDetails, amountStr) {
+  const amount = decimalToBigInt(amountStr.toString(), 6);
+
+  const adaPerSc = decimalToBigInt(coinsDetails.scaledPriceSc, 6);
+
+  const eqPrice = amount * adaPerSc;
+
+  return decimalScaling(eqPrice.toString(), 6);
 }
