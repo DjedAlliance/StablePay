@@ -45,7 +45,8 @@ export class NetworkSelector {
     return this.merchantConfig.getReceivingAddress();
   }
 
-  getTokenAmount(token) {
-    return this.merchantConfig.getTokenAmount(this.selectedNetwork, token);
+  // Updated to accept a specific token ID
+  getTokenAmount(tokenKey) {
+    return this.merchantConfig.getTokenAmount(this.selectedNetwork, tokenKey);
   }
 }

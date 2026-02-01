@@ -5,7 +5,8 @@
   "main": "dist/umd/index.js",
   "module": "dist/esm/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c"
   },
   "keywords": [],
   "author": "",
