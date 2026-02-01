@@ -3800,6 +3800,15 @@
     }
   };
 
+  const approveTx = (tokenContract, owner, spender, amount) => {
+    const data = tokenContract.methods.approve(spender, amount).encodeABI();
+    return buildTx(owner, tokenContract.options.address, 0, data);
+  };
+
+  const checkAllowance = async (tokenContract, owner, spender) => {
+    return await tokenContract.methods.allowance(owner, spender).call();
+  };
+
   var contractName = "Oracle";
   var abi$3 = [
   	{
@@ -5132,6 +5141,7 @@
 
   exports.FEE_UI_UNSCALED = FEE_UI_UNSCALED;
   exports.appendFees = appendFees;
+  exports.approveTx = approveTx;
   exports.buyRcIsisTx = buyRcIsisTx;
   exports.buyRcTx = buyRcTx;
   exports.buyScIsisTx = buyScIsisTx;
@@ -5142,6 +5152,7 @@
   exports.calculateIsRatioBelowMax = calculateIsRatioBelowMax;
   exports.calculateRcUsdEquivalent = calculateRcUsdEquivalent;
   exports.calculateTxFees = calculateTxFees;
+  exports.checkAllowance = checkAllowance;
   exports.convertToBC = convertToBC;
   exports.deductFees = deductFees;
   exports.getAPI3OracleContract = getAPI3OracleContract;

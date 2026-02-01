@@ -1,9 +1,11 @@
-import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx } from 'djed-sdk';
+import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx, checkAllowance, approveTx, buyScIsisTx } from 'djed-sdk';
+import coinArtifact from 'djed-sdk/src/artifacts/CoinABI.json'; // Importing CoinABI from SDK
 
 export class Transaction {
-  constructor(networkUri, djedAddress) {
+  constructor(networkUri, djedAddress, baseAssetAddress = null) {
     this.networkUri = networkUri;
     this.djedAddress = djedAddress;
+    this.baseAssetAddress = baseAssetAddress; // Address of the ERC20 Base Asset (optional)
   }
 
   async init() {
@@ -14,6 +16,11 @@ export class Transaction {
     try {
       this.web3 = await getWeb3(this.networkUri);
       this.djedContract = getDjedContract(this.web3, this.djedAddress);
+
+      if (this.baseAssetAddress) {
+        // Initialize Base Asset contract if provided
+        this.baseAssetContract = new this.web3.eth.Contract(coinArtifact.abi, this.baseAssetAddress);
+      }
       
       try {
       const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
@@ -109,12 +116,31 @@ export class Transaction {
     try {
       const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
 
-      const txData = await buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
-
-      return txData;
+      if (this.baseAssetAddress) {
+        if (!this.baseAssetContract) {
+           throw new Error("Base Asset contract not initialized for ERC20 flow");
+        }
+        return buyScIsisTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
+      } else {
+        return buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
+      }
     } catch (error) {
       console.error("Error executing buyStablecoins transaction: ", error);
       throw error;
     }
+  }
+
+  async approveBaseAsset(payer, amount) {
+    if (!this.baseAssetContract) {
+      throw new Error("No Base Asset contract to approve");
+    }
+    return approveTx(this.baseAssetContract, payer, this.djedAddress, amount);
+  }
+
+  async checkBaseAssetAllowance(owner) {
+     if (!this.baseAssetContract) {
+        return 'Inf'; 
+     }
+     return checkAllowance(this.baseAssetContract, owner, this.djedAddress);
   }
 }

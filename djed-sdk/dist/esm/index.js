@@ -3796,6 +3796,15 @@ const getPastDjedEvents = async (
   }
 };
 
+const approveTx = (tokenContract, owner, spender, amount) => {
+  const data = tokenContract.methods.approve(spender, amount).encodeABI();
+  return buildTx(owner, tokenContract.options.address, 0, data);
+};
+
+const checkAllowance = async (tokenContract, owner, spender) => {
+  return await tokenContract.methods.allowance(owner, spender).call();
+};
+
 var contractName = "Oracle";
 var abi$3 = [
 	{
@@ -5126,4 +5135,4 @@ const getAPI3OracleContract = (web3, oracleAddress, msgSender) => {
   return oracle;
 };
 
-export { FEE_UI_UNSCALED, appendFees, buyRcIsisTx, buyRcTx, buyScIsisTx, buyScTx, calculateBcUsdEquivalent, calculateFutureScPrice, calculateIsRatioAboveMin, calculateIsRatioBelowMax, calculateRcUsdEquivalent, calculateTxFees, convertToBC, deductFees, getAPI3OracleContract, getAccountDetails, getBcUsdEquivalent, getChainlinkOracleContract, getCoinContracts, getCoinDetails, getDecimals, getDjedContract, getDjedIsisContract, getDjedTefnutContract, getFees, getHebeSwapOracleContract, getOracleAddress, getOracleContract, getPastDjedEvents, getRcUsdEquivalent, getScAdaEquivalent, getSystemParams, getWeb3, isTxLimitReached, promiseTx, scalingFactor, sellBothIsisTx, sellBothTx, sellRcIsisTx, sellRcTx, sellScIsisTx, sellScTx, subscribeToDjedEvents, tradeDataPriceBuyRc, tradeDataPriceBuySc, tradeDataPriceCore, tradeDataPriceSellBoth, tradeDataPriceSellRc, tradeDataPriceSellSc, verifyTx };
+export { FEE_UI_UNSCALED, appendFees, approveTx, buyRcIsisTx, buyRcTx, buyScIsisTx, buyScTx, calculateBcUsdEquivalent, calculateFutureScPrice, calculateIsRatioAboveMin, calculateIsRatioBelowMax, calculateRcUsdEquivalent, calculateTxFees, checkAllowance, convertToBC, deductFees, getAPI3OracleContract, getAccountDetails, getBcUsdEquivalent, getChainlinkOracleContract, getCoinContracts, getCoinDetails, getDecimals, getDjedContract, getDjedIsisContract, getDjedTefnutContract, getFees, getHebeSwapOracleContract, getOracleAddress, getOracleContract, getPastDjedEvents, getRcUsdEquivalent, getScAdaEquivalent, getSystemParams, getWeb3, isTxLimitReached, promiseTx, scalingFactor, sellBothIsisTx, sellBothTx, sellRcIsisTx, sellRcTx, sellScIsisTx, sellScTx, subscribeToDjedEvents, tradeDataPriceBuyRc, tradeDataPriceBuySc, tradeDataPriceCore, tradeDataPriceSellBoth, tradeDataPriceSellRc, tradeDataPriceSellSc, verifyTx };

@@ -46,3 +46,8 @@ export { getDjedContract, getDjedIsisContract, getDjedTefnutContract, getCoinCon
 
 export { getCoinDetails, getSystemParams, getAccountDetails } from "./system";
 export { subscribeToDjedEvents, getPastDjedEvents } from "./listeners";
+
+export {
+  approveTx,
+  checkAllowance,
+} from "./token";
