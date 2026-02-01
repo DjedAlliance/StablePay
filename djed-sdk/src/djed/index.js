@@ -37,3 +37,4 @@ export {
 export { getDjedContract, getCoinContracts, getDecimals } from "./djed";
 
 export { getCoinDetails, getSystemParams, getAccountDetails } from "./system";
+export { subscribeToDjedEvents, getPastDjedEvents } from "./listeners";
