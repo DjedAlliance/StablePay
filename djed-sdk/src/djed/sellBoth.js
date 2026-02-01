@@ -68,6 +68,7 @@ export const tradeDataPriceSellBoth = async (
     };
   } catch (error) {
     console.error("Error in tradeDataPriceSellBoth:", error);
+    throw error;
   }
 };
 
