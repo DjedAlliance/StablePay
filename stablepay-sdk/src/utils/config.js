@@ -1,14 +1,16 @@
-// src/utils/config.js
-
+/**
+ * Final Generalized Configuration
+ * Supports multiple Djed deployments (Osiris, Isis, Tefnut) per network.
+ */
 export const networksConfig = {
   'sepolia': {
     uri: 'https://ethereum-sepolia.publicnode.com/',
     chainId: 11155111,
     stablecoins: [
       {
-        id: 'djed-eth',
+        id: 'djed-eth-sepolia',
         name: 'Djed (ETH Backed)',
-        protocol: 'djed', // Standard Native
+        protocol: 'djed',
         contractAddress: '0x624FcD0a1F9B5820c950FefD48087531d38387f4',
         baseAsset: {
           symbol: 'ETH',
@@ -33,7 +35,7 @@ export const networksConfig = {
       {
         id: 'djed-mada',
         name: 'Djed (mADA Backed)',
-        protocol: 'djed', // Standard Native
+        protocol: 'djed',
         contractAddress: '0x67A30B399F5Ed499C1a6Bc0358FA6e42Ea4BCe76',
         baseAsset: {
           symbol: 'mADA',
@@ -47,14 +49,25 @@ export const networksConfig = {
           decimals: 18,
           isDirectTransfer: true
         }
+      },
+      {
+        id: 'djed-usdt-isis',
+        name: 'Djed (USDT Backed)',
+        protocol: 'isis', // Triggers ERC20 Approval logic
+        contractAddress: '0x0000000000000000000000000000000000000000', // Replace with live Isis address
+        baseAsset: { 
+          symbol: 'USDT', 
+          decimals: 6, 
+          isNative: false, 
+          address: '0x0000000000000000000000000000000000000000' // Replace with live USDT address
+        },
+        stableCoin: {
+          symbol: 'iUSD',
+          address: '0x0000000000000000000000000000000000000000',
+          decimals: 18,
+          isDirectTransfer: true
+        }
       }
-      // Add Isis/Tefnut stablecoins here in the future:
-      // {
-      //   id: 'djed-usdt',
-      //   protocol: 'isis',
-      //   contractAddress: '0x...',
-      //   baseAsset: { symbol: 'USDT', isNative: false, address: '0x...', decimals: 6 }
-      // }
     ],
     feeUI: 0
   },
