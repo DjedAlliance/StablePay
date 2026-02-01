@@ -27,3 +27,13 @@ export const getDecimals = async (stableCoin, reserveCoin) => {
   ]);
   return { scDecimals, rcDecimals };
 };
+
+export const checkIfShu = async (djedContract) => {
+  try {
+    // Check if scMaxPrice exists on the contract
+    await djedContract.methods.scMaxPrice(0).call();
+    return true;
+  } catch (e) {
+    return false;
+  }
+};

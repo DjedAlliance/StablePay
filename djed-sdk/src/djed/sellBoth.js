@@ -11,6 +11,7 @@ import {
   convertToBC,
   deductFees,
   FEE_UI_UNSCALED,
+  getPriceMethod,
 } from "./tradeUtils";
 
 /**
@@ -30,8 +31,9 @@ export const tradeDataPriceSellBoth = async (
   amountRcScaled
 ) => {
   try {
+    const scPriceMethod = await getPriceMethod(djed, 'sellSC');
     const [scPriceData, rcPriceData] = await Promise.all([
-      scaledUnscaledPromise(web3Promise(djed, "scPrice", 0), BC_DECIMALS),
+      scaledUnscaledPromise(web3Promise(djed, scPriceMethod, 0), BC_DECIMALS),
       scaledUnscaledPromise(web3Promise(djed, "rcTargetPrice", 0), BC_DECIMALS),
     ]);
 

@@ -7,6 +7,7 @@ import {
   deductFees,
   FEE_UI_UNSCALED,
   tradeDataPriceCore,
+  getPriceMethod,
 } from "./tradeUtils";
 
 /**
@@ -18,6 +19,7 @@ import {
  */
 export const tradeDataPriceBuyRc = async (djed, rcDecimals, amountScaled) => {
   try {
+    const scMethod = await getPriceMethod(djed, 'buyRC');
     const data = await tradeDataPriceCore(
       djed,
       "rcBuyingPrice",
@@ -44,6 +46,7 @@ export const tradeDataPriceBuyRc = async (djed, rcDecimals, amountScaled) => {
 
 export const tradeDataPriceSellRc = async (djed, rcDecimals, amountScaled) => {
   try {
+    const scMethod = await getPriceMethod(djed, 'sellRC');
     const data = await tradeDataPriceCore(
       djed,
       "rcTargetPrice",
