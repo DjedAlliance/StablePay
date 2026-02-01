@@ -32,7 +32,6 @@ export class Transaction {
         console.error('[Transaction] Error fetching contract details:', contractError);
         if (contractError.message && contractError.message.includes('execution reverted')) {
           const getNetworkInfo = (uri) => {
-            if (uri.includes('milkomeda')) return { name: 'Milkomeda', chainId: '2001' };
             if (uri.includes('mordor')) return { name: 'Mordor Testnet', chainId: '63' };
             if (uri.includes('sepolia')) return { name: 'Sepolia', chainId: '11155111' };
             if (uri.includes('etc.rivet.link')) return { name: 'Ethereum Classic', chainId: '61' };
@@ -54,7 +53,6 @@ export class Transaction {
       console.error('[Transaction] Error initializing transaction:', error);
       if (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
         const getNetworkName = (uri) => {
-          if (uri.includes('milkomeda')) return 'Milkomeda';
           if (uri.includes('mordor')) return 'Mordor';
           if (uri.includes('sepolia')) return 'Sepolia';
           return 'the selected network';
