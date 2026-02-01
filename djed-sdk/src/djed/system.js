@@ -148,21 +148,6 @@ export const getSystemParams = async (djed) => {
     txLimit,
   };
 };
-      true
-    ),
-    reserveRatioMax: percentageScale(
-      reserveRatioMaxUnscaled,
-      SCALING_DECIMALS,
-      true
-    ),
-    reserveRatioMinUnscaled,
-    reserveRatioMaxUnscaled,
-    fee: percentageScale(feeUnscaled, SCALING_DECIMALS, true),
-    feeUnscaled,
-    treasuryFee,
-    thresholdSupplySC,
-  };
-};
 
 export const getAccountDetails = async (
   web3,
