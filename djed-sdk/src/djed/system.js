@@ -7,6 +7,7 @@ import {
   decimalScaling,
   percentageScale,
 } from "../helpers";
+import { checkIfShu } from "./djed";
 
 export const getCoinDetails = async (
   stableCoin,
@@ -16,6 +17,9 @@ export const getCoinDetails = async (
   rcDecimals
 ) => {
   try {
+    const isShu = await checkIfShu(djed);
+    const priceMethod = isShu ? "scMaxPrice" : "scPrice";
+
     const [
       [scaledNumberSc, unscaledNumberSc],
       [scaledPriceSc, unscaledPriceSc],
@@ -25,14 +29,14 @@ export const getCoinDetails = async (
       scaledScExchangeRate,
     ] = await Promise.all([
       scaledUnscaledPromise(web3Promise(stableCoin, "totalSupply"), scDecimals),
-      scaledUnscaledPromise(web3Promise(djed, "scPrice", 0), BC_DECIMALS),
+      scaledUnscaledPromise(web3Promise(djed, priceMethod, 0), BC_DECIMALS),
       scaledUnscaledPromise(
         web3Promise(reserveCoin, "totalSupply"),
         rcDecimals
       ),
       scaledUnscaledPromise(web3Promise(djed, "R", 0), BC_DECIMALS),
       scaledPromise(web3Promise(djed, "rcBuyingPrice", 0), BC_DECIMALS),
-      scaledPromise(web3Promise(djed, "scPrice", 0), BC_DECIMALS),
+      scaledPromise(web3Promise(djed, priceMethod, 0), BC_DECIMALS),
     ]);
 
     // Define default empty value
@@ -40,6 +44,8 @@ export const getCoinDetails = async (
     let scaledSellPriceRc = emptyValue;
     let unscaledSellPriceRc = emptyValue;
     let percentReserveRatio = emptyValue;
+    let percentReserveRatioMin = emptyValue;
+    let percentReserveRatioMax = emptyValue;
 
     // Check total reserve coin supply to calculate sell price
     if (BigInt(unscaledNumberRc) !== 0n) {
@@ -51,14 +57,25 @@ export const getCoinDetails = async (
 
     // Check total stable coin supply to calculate reserve ratio
     if (BigInt(unscaledNumberSc) !== 0n) {
-      percentReserveRatio = await percentScaledPromise(
-        web3Promise(djed, "ratio"),
-        SCALING_DECIMALS
-      );
+      if (isShu) {
+        const [ratioMin, ratioMax] = await Promise.all([
+           percentScaledPromise(web3Promise(djed, "ratioMin"), SCALING_DECIMALS),
+           percentScaledPromise(web3Promise(djed, "ratioMax"), SCALING_DECIMALS)
+        ]);
+        percentReserveRatioMin = ratioMin;
+        percentReserveRatioMax = ratioMax;
+        percentReserveRatio = `${ratioMin} - ${ratioMax}`;
+      } else {
+        percentReserveRatio = await percentScaledPromise(
+          web3Promise(djed, "ratio"),
+          SCALING_DECIMALS
+        );
+      }
     }
 
     // Return the results
     return {
+      isShu,
       scaledNumberSc,
       unscaledNumberSc,
       scaledPriceSc,
@@ -68,6 +85,8 @@ export const getCoinDetails = async (
       scaledReserveBc,
       unscaledReserveBc,
       percentReserveRatio,
+      percentReserveRatioMin,
+      percentReserveRatioMax,
       scaledBuyPriceRc,
       scaledSellPriceRc,
       unscaledSellPriceRc,
@@ -86,12 +105,22 @@ export const getSystemParams = async (djed) => {
     feeUnscaled,
     treasuryFee,
     thresholdSupplySC,
+    initialTreasuryFee,
+    treasuryRevenueTarget,
+    treasuryRevenue,
+    rcMinPrice,
+    txLimit,
   ] = await Promise.all([
     web3Promise(djed, "reserveRatioMin"),
     web3Promise(djed, "reserveRatioMax"),
     web3Promise(djed, "fee"),
     percentScaledPromise(web3Promise(djed, "treasuryFee"), SCALING_DECIMALS),
     web3Promise(djed, "thresholdSupplySC"),
+    web3Promise(djed, "initialTreasuryFee"),
+    web3Promise(djed, "treasuryRevenueTarget"),
+    web3Promise(djed, "treasuryRevenue"),
+    web3Promise(djed, "rcMinPrice"),
+    web3Promise(djed, "txLimit"),
   ]);
 
   return {
@@ -111,6 +140,12 @@ export const getSystemParams = async (djed) => {
     feeUnscaled,
     treasuryFee,
     thresholdSupplySC,
+    initialTreasuryFee: percentageScale(initialTreasuryFee, SCALING_DECIMALS, true),
+    initialTreasuryFeeUnscaled: initialTreasuryFee,
+    treasuryRevenueTarget,
+    treasuryRevenue,
+    rcMinPrice,
+    txLimit,
   };
 };
 

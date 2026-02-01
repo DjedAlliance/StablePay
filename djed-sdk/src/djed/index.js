@@ -14,6 +14,19 @@ export {
 } from "./stableCoin";
 
 export {
+  tradeDataPriceSellBoth,
+  sellBothTx,
+} from "./sellBoth";
+
+export {
+  buyScIsisTx,
+  sellScIsisTx,
+  buyRcIsisTx,
+  sellRcIsisTx,
+  sellBothIsisTx
+} from "./isis";
+
+export {
   scalingFactor,
   FEE_UI_UNSCALED,
   convertToBC,
@@ -29,6 +42,12 @@ export {
   getFees,
 } from "./tradeUtils";
 
-export { getDjedContract, getCoinContracts, getDecimals } from "./djed";
+export { getDjedContract, getDjedIsisContract, getDjedTefnutContract, getCoinContracts, getDecimals } from "./djed";
 
 export { getCoinDetails, getSystemParams, getAccountDetails } from "./system";
+export { subscribeToDjedEvents, getPastDjedEvents } from "./listeners";
+
+export {
+  approveTx,
+  checkAllowance,
+} from "./token";

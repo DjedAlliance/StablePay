@@ -277,6 +277,11 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
           "internalType": "address",
           "name": "receiver",
           "type": "address"
@@ -294,11 +299,16 @@
       ],
       "name": "buyReserveCoins",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
       "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
         {
           "internalType": "address",
           "name": "receiver",
@@ -317,7 +327,7 @@
       ],
       "name": "buyStableCoins",
       "outputs": [],
-      "stateMutability": "payable",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

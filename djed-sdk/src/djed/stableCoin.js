@@ -7,6 +7,7 @@ import {
   convertToBC,
   deductFees,
   FEE_UI_UNSCALED,
+  getPriceMethod,
 } from "./tradeUtils";
 
 /**
@@ -18,9 +19,10 @@ import {
  */
 export const tradeDataPriceBuySc = async (djed, scDecimals, amountScaled) => {
   try {
+    const method = await getPriceMethod(djed, 'buySC');
     const data = await tradeDataPriceCore(
       djed,
-      "scPrice",
+      method,
       scDecimals,
       amountScaled
     );
@@ -51,9 +53,10 @@ export const tradeDataPriceBuySc = async (djed, scDecimals, amountScaled) => {
  */
 export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
   try {
+    const method = await getPriceMethod(djed, 'sellSC');
     const data = await tradeDataPriceCore(
       djed,
-      "scPrice",
+      method,
       scDecimals,
       amountScaled
     );

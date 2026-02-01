@@ -112,10 +112,11 @@ export const calculateIsRatioAboveMin = ({
  * @param {*} amountUSD
  * @param {*} totalSCSupply
  * @param {*} thresholdSCSupply
+ * @param {*} txLimit
  * @returns
  */
-export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
-  amountUSD > TRANSACTION_USD_LIMIT &&
+export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply, txLimit) =>
+  (BigInt(amountUSD) > BigInt(txLimit || TRANSACTION_USD_LIMIT)) &&
   BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
 export const promiseTx = (isWalletConnected, tx, signer) => {
@@ -200,5 +201,25 @@ export const getFees = async (djed) => {
     };
   } catch (error) {
     console.log("error", error);
+  }
+};
+
+/**
+ * Function that returns the correct price method name based on the contract version and operation
+ * @param {*} djed Djed contract
+ * @param {*} operation 'buySC', 'sellSC', 'buyRC', 'sellRC'
+ * @returns 
+ */
+export const getPriceMethod = async (djed, operation) => {
+  const isShu = await djed.methods.scMaxPrice(0).call().then(() => true).catch(() => false);
+  
+  if (!isShu) return "scPrice";
+
+  switch (operation) {
+    case 'buySC': return "scMaxPrice";
+    case 'sellSC': return "scMinPrice";
+    case 'buyRC': return "scMinPrice";
+    case 'sellRC': return "scMaxPrice";
+    default: return "scPrice";
   }
 };
