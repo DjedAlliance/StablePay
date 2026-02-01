@@ -126,11 +126,15 @@ const TransactionReview = ({ onTransactionComplete }) => {
           
           setMessage(`⏳ Approval Sent. Waiting...`);
           
-          setTimeout(() => {
-              setIsApproved(true);
-              setIsApproving(false);
-              setMessage("✅ Approved! You can now send the payment.");
-          }, 5000);
+         
+          const receipt = await walletClient.waitForTransactionReceipt({ hash });
+            if (receipt.status === 'success') {
+                setIsApproved(true);
+                setMessage("✅ Approved! You can now send the payment.");
+            } else {
+                setMessage("❌ Approval transaction failed on-chain.");
+            }
+          setIsApproving(false);
           
       } catch(e) {
           console.error(e);
