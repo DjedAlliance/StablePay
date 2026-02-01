@@ -14,6 +14,11 @@ export {
 } from "./stableCoin";
 
 export {
+  tradeDataPriceSellBoth,
+  sellBothTx,
+} from "./sellBoth";
+
+export {
   scalingFactor,
   FEE_UI_UNSCALED,
   convertToBC,
