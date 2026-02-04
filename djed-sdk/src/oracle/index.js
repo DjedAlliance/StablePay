@@ -1,1 +1,1 @@
-export { getOracleAddress, getOracleContract } from "./oracle";
+export {getOracleAddress,getOracleContract,getHebeSwapOracleContract,getChainlinkOracleContract,getAPI3OracleContract} from "./oracle";

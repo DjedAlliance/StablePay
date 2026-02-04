@@ -1,5 +1,3 @@
-// TokenSelector.js
-
 export class TokenSelector {
   constructor(networkSelector) {
     this.networkSelector = networkSelector;
@@ -7,12 +5,11 @@ export class TokenSelector {
   }
 
   selectToken(tokenKey) {
-    const networkConfig = this.networkSelector.getSelectedNetworkConfig();
-    if (networkConfig && networkConfig.tokens[tokenKey]) {
-      this.selectedToken = {
-        key: tokenKey,
-        ...networkConfig.tokens[tokenKey]
-      };
+    const tokens = this.getAvailableTokens();
+    const foundToken = tokens.find(t => t.key === tokenKey);
+
+    if (foundToken) {
+      this.selectedToken = foundToken;
       return true;
     }
     return false;
@@ -24,11 +21,17 @@ export class TokenSelector {
 
   getAvailableTokens() {
     const networkConfig = this.networkSelector.getSelectedNetworkConfig();
-    if (!networkConfig) return [];
+    if (!networkConfig || !networkConfig.stablecoins) return [];
 
-    return Object.entries(networkConfig.tokens).map(([key, config]) => ({
-      key,
-      ...config
+    // Map the stablecoins array to the UI format
+    return networkConfig.stablecoins.map(sc => ({
+      key: sc.id,
+      name: sc.name,
+      symbol: sc.stableCoin.symbol,
+      baseAsset: sc.baseAsset.symbol,
+      isDirectTransfer: sc.stableCoin.isDirectTransfer,
+      // Store full config for Transaction usage
+      config: sc 
     }));
   }
 

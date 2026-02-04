@@ -1,9 +1,28 @@
-import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx } from 'djed-sdk';
+import { 
+  getWeb3, 
+  getDjedContract, 
+  getCoinContracts, 
+  getDecimals, 
+  getOracleAddress, 
+  getOracleContract, 
+  tradeDataPriceBuySc, 
+  buyScTx, 
+  buyScIsisTx, 
+  checkAllowance, 
+  approveTx 
+} from 'djed-sdk';
+import coinArtifact from 'djed-sdk/src/artifacts/CoinABI.json'; 
 
 export class Transaction {
-  constructor(networkUri, djedAddress) {
+  /**
+   * @param {string} networkUri
+   * @param {object} stablecoinConfig - The specific config object for the selected stablecoin
+   */
+  constructor(networkUri, stablecoinConfig) {
     this.networkUri = networkUri;
-    this.djedAddress = djedAddress;
+    this.config = stablecoinConfig;
+    this.djedAddress = stablecoinConfig.contractAddress;
+    this.baseAsset = stablecoinConfig.baseAsset;
   }
 
   async init() {
@@ -14,61 +33,31 @@ export class Transaction {
     try {
       this.web3 = await getWeb3(this.networkUri);
       this.djedContract = getDjedContract(this.web3, this.djedAddress);
+
+      // Initialize Base Asset contract if it is ERC20
+      if (!this.baseAsset.isNative && this.baseAsset.address) {
+        this.baseAssetContract = new this.web3.eth.Contract(coinArtifact.abi, this.baseAsset.address);
+      }
       
       try {
-      const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
-      const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
-      this.stableCoin = stableCoin;
-      this.reserveCoin = reserveCoin;
-      this.scDecimals = scDecimals;
-      this.rcDecimals = rcDecimals;
+        const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
+        const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
+        this.stableCoin = stableCoin;
+        this.reserveCoin = reserveCoin;
+        this.scDecimals = scDecimals;
+        this.rcDecimals = rcDecimals;
 
-      this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
-        getOracleContract(this.web3, addr, this.djedContract._address)
-      );
+        this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
+          getOracleContract(this.web3, addr, this.djedContract._address)
+        );
 
-      this.oracleAddress = this.oracleContract._address;
+        this.oracleAddress = this.oracleContract._address;
       } catch (contractError) {
         console.error('[Transaction] Error fetching contract details:', contractError);
-        if (contractError.message && contractError.message.includes('execution reverted')) {
-          const getNetworkInfo = (uri) => {
-            if (uri.includes('milkomeda')) return { name: 'Milkomeda', chainId: '2001' };
-            if (uri.includes('mordor')) return { name: 'Mordor Testnet', chainId: '63' };
-            if (uri.includes('sepolia')) return { name: 'Sepolia', chainId: '11155111' };
-            if (uri.includes('etc.rivet.link')) return { name: 'Ethereum Classic', chainId: '61' };
-            return { name: 'the selected network', chainId: 'unknown' };
-          };
-          const { name: networkName, chainId } = getNetworkInfo(this.networkUri);
-          throw new Error(
-            `Failed to interact with Djed contract at ${this.djedAddress} on ${networkName}.\n\n` +
-            `Possible causes:\n` +
-            `- The contract address may be incorrect\n` +
-            `- The contract may not be deployed on ${networkName}\n` +
-            `- The contract may not be a valid Djed contract\n\n` +
-            `Please verify the contract address is correct for ${networkName} (Chain ID: ${chainId}).`
-          );
-        }
         throw contractError;
       }
     } catch (error) {
       console.error('[Transaction] Error initializing transaction:', error);
-      if (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
-        const getNetworkName = (uri) => {
-          if (uri.includes('milkomeda')) return 'Milkomeda';
-          if (uri.includes('mordor')) return 'Mordor';
-          if (uri.includes('sepolia')) return 'Sepolia';
-          return 'the selected network';
-        };
-        const networkName = getNetworkName(this.networkUri);
-        throw new Error(
-          `Failed to connect to ${networkName} RPC endpoint: ${this.networkUri}\n\n` +
-          `Possible causes:\n` +
-          `- The RPC endpoint may be temporarily unavailable\n` +
-          `- DNS resolution issue (check your internet connection)\n` +
-          `- Network firewall blocking the connection\n\n` +
-          `Please try again in a few moments or check the network status.`
-        );
-      }
       throw error;
     }
   }
@@ -83,16 +72,14 @@ export class Transaction {
       reserveCoinDecimals: this.rcDecimals,
       oracleAddress: this.oracleAddress || 'N/A',
       oracleContractAvailable: !!this.oracleContract,
+      baseAssetSymbol: this.baseAsset.symbol,
+      baseAssetIsNative: this.baseAsset.isNative,
+      baseAssetDecimals: this.baseAsset.decimals
     };
   }
 
   async handleTradeDataBuySc(amountScaled) {
-    if (!this.djedContract) {
-      throw new Error("DJED contract is not initialized");
-    }
-    if (typeof amountScaled !== 'string') {
-      throw new Error("Amount must be a string");
-    }
+    if (!this.djedContract) throw new Error("DJED contract is not initialized");
     try {
       const result = await tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
       return result.totalBCScaled;
@@ -103,18 +90,37 @@ export class Transaction {
   }
 
   async buyStablecoins(payer, receiver, value) {
-    if (!this.djedContract) {
-      throw new Error("DJED contract is not initialized");
-    }
+    if (!this.djedContract) throw new Error("DJED contract is not initialized");
+    
     try {
       const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
 
-      const txData = await buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
-
-      return txData;
+      if (!this.baseAsset.isNative) {
+        // Use Isis transaction builder for ERC20
+        if (!this.baseAssetContract) throw new Error("Base Asset contract not initialized for ERC20 flow");
+        return buyScIsisTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
+      } else {
+        // Use Standard transaction builder for Native
+        return buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
+      }
     } catch (error) {
       console.error("Error executing buyStablecoins transaction: ", error);
       throw error;
     }
+  }
+
+  async approveBaseAsset(payer, amount) {
+    if (this.baseAsset.isNative) throw new Error("Cannot approve native asset");
+    if (!this.baseAssetContract) throw new Error("No Base Asset contract to approve");
+    
+    return approveTx(this.baseAssetContract, payer, this.djedAddress, amount);
+  }
+
+  async checkBaseAssetAllowance(owner, amount) {
+     if (this.baseAsset.isNative) return true;
+     if (!this.baseAssetContract) return false;
+     
+     const allowance = await checkAllowance(this.baseAssetContract, owner, this.djedAddress);
+     return BigInt(allowance) >= BigInt(amount);
   }
 }

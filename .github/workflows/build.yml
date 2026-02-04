@@ -1,0 +1,38 @@
+name: Build Verification
+
+# Trigger on any push or pull request to the main branch
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Check out the code
+      - uses: actions/checkout@v4
+
+      # 2. Install Node.js v18
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          # Optional: This speeds up installs by caching npm
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      
+      # 3. Build Djed SDK
+      - name: Install & Build Djed SDK
+        working-directory: ./djed-sdk
+        run: |
+          npm ci
+          npm run build
+
+      # 4. Build StablePay SDK
+      - name: Install & Build StablePay SDK
+        working-directory: ./stablepay-sdk
+        run: |
+          npm ci
+          npm run build

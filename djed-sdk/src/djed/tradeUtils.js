@@ -17,6 +17,7 @@ export const FEE_UI_UNSCALED = decimalUnscaling(
   (FEE_UI / 100).toString(),
   SCALING_DECIMALS
 );
+
 export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
   const amountUnscaled = decimalUnscaling(amountScaled, decimals);
   return scaledUnscaledPromise(web3Promise(djed, method, 0), BC_DECIMALS).then(
@@ -42,29 +43,11 @@ export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
   );
 };
 
-/**
- * Function that converts coin amount to BC
- * @param {*} amount unscaled coin amount to be converted to BC
- * @param {*} price unscaled coin price
- * @param {*} decimals coin decimals
- * @returns unscaled BC amount
- */
 export const convertToBC = (amount, price, decimals) => {
   const decimalScalingFactor = BigInt(Math.pow(10, decimals));
   return (BigInt(amount) * BigInt(price)) / decimalScalingFactor;
 };
 
-/**
- * Calculate if the transaction will reach the maximum reserve ratio
- * @param scPrice - Unscaled stablecoin price
- * @param reserveBc - Unscaled reserve of base coin with appended potential transaction amount.
- * Example: If user wants to buy 1RC, the reserveBc param will be calculated as sum of current reserve of BC and desired RC amount converted in BC
- * @param totalScSupply - Unscaled total stablecoin supply
- * @param reserveRatioMax - Unscaled maximum reserve ratio
- * @param scDecimalScalingFactor - If stablecoin has 6 decimals, scDecimalScalingFactor will be calculated as 10^6
- * @param thresholdSupplySC - Unscaled threshold SC supply
- * @returns
- */
 export const calculateIsRatioBelowMax = ({
   scPrice,
   reserveBc,
@@ -82,16 +65,6 @@ export const calculateIsRatioBelowMax = ({
   );
 };
 
-/**
- * Calculate if the transaction will reach the minimum reserve ratio
- * @param scPrice - Unscaled stablecoin price
- * @param reserveBc - Unscaled reserve of base coin with calculated potential transaction amount.
- * Example: If user wants to buy 1SC, the reserveBc param will be calculated as sum of current reserve of BC and desired SC amount converted in BC
- * @param totalScSupply - Unscaled total stablecoin supply
- * @param reserveRatioMin - Unscaled minimum reserve ratio
- * @param scDecimalScalingFactor - If stablecoin has 6 decimals, scDecimalScalingFactor will be calculated as 10^6
- * @returns
- */
 export const calculateIsRatioAboveMin = ({
   scPrice,
   reserveBc,
@@ -107,15 +80,8 @@ export const calculateIsRatioAboveMin = ({
   );
 };
 
-/**
- *
- * @param {*} amountUSD
- * @param {*} totalSCSupply
- * @param {*} thresholdSCSupply
- * @returns
- */
-export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
-  amountUSD > TRANSACTION_USD_LIMIT &&
+export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply, txLimit) =>
+  (BigInt(amountUSD) > BigInt(txLimit || TRANSACTION_USD_LIMIT)) &&
   BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
 export const promiseTx = (isWalletConnected, tx, signer) => {
@@ -138,13 +104,6 @@ export const verifyTx = (web3, hash) => {
   });
 };
 
-/**
- * Function that deducts all platform fees from the BC amount
- * @param {*} value The amount of BC from which fees should be deducted
- * @param {*} fee The platform fee
- * @param {*} treasuryFee The treasury fee
- * @returns BC value with all fees calculated
- */
 export const calculateTxFees = (value, fee, treasuryFee, feeUI) => {
   const f = (BigInt(value) * BigInt(fee)) / BigInt(scalingFactor);
   const f_ui =
@@ -154,26 +113,11 @@ export const calculateTxFees = (value, fee, treasuryFee, feeUI) => {
   return { f, f_ui, f_t };
 };
 
-/**
- * Function that deducts all platform fees from the BC amount
- * @param {*} value The amount of BC from which fees should be deducted
- * @param {*} fee The platform fee
- * @param {*} treasuryFee The treasury fee
- * @returns BC value with all fees calculated
- */
 export const deductFees = (value, fee, treasuryFee) => {
   const { f, f_ui, f_t } = calculateTxFees(value, fee, treasuryFee);
   return BigInt(value) - f - f_ui - f_t;
 };
 
-/**
- * Function that appends all platform fees to the BC amount
- * @param {*} amountBC The unscaled amount of BC (e.g. for 1BC, value should be 1 * 10^BC_DECIMALS)
- * @param {*} treasuryFee Treasury fee unscaled (e.g. If the fee is 1%, than 1/100 * scalingFactor)
- * @param {*} fee Fee unscaled (e.g. If the fee is 1%, than 1/100 * scalingFactor)
- * @param {*} fee_UI UI fee unscaled (e.g. If the fee is 1%, than 1/100 * scalingFactor)
- * @returns Unscaled BC amount with calculated fees
- */
 export const appendFees = (amountBC, treasuryFee, fee, fee_UI) => {
   const totalFees = BigInt(treasuryFee) + BigInt(fee) + BigInt(fee_UI);
   const substractedFees = BigInt(scalingFactor) - totalFees;
@@ -183,11 +127,6 @@ export const appendFees = (amountBC, treasuryFee, fee, fee_UI) => {
   return appendedFeesAmount.toString();
 };
 
-/**
- * Function that returns treasury and platform fees
- * @param {*} djed Djed contract
- * @returns Treasury and platform fee
- */
 export const getFees = async (djed) => {
   try {
     const [treasuryFee, fee] = await Promise.all([
@@ -200,5 +139,22 @@ export const getFees = async (djed) => {
     };
   } catch (error) {
     console.log("error", error);
+  }
+};
+
+/**
+ * Added getPriceMethod export to fix Rollup Error
+ */
+export const getPriceMethod = async (djed, operation) => {
+  const isShu = await djed.methods.scMaxPrice(0).call().then(() => true).catch(() => false);
+  
+  if (!isShu) return "scPrice";
+
+  switch (operation) {
+    case 'buySC': return "scMaxPrice";
+    case 'sellSC': return "scMinPrice";
+    case 'buyRC': return "scMinPrice";
+    case 'sellRC': return "scMaxPrice";
+    default: return "scPrice";
   }
 };
