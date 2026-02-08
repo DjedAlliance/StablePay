@@ -6,7 +6,8 @@
   "module": "dist/esm/index.js",
   "style": "dist/styles.css",
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "prepare": "npm run build"
   },
   "keywords": [],
   "author": "",

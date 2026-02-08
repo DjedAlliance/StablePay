@@ -5,6 +5,7 @@ import terser from '@rollup/plugin-terser';
 import babel from "@rollup/plugin-babel";
 import postcss from "rollup-plugin-postcss";
 import url from "@rollup/plugin-url";
+
 export default {
   input: "src/index.js",
   output: [
@@ -19,6 +20,7 @@ export default {
       file: "dist/umd/index.js",
       globals: {
         "djed-sdk": "DjedSdk",
+        "djed-sdk/src/artifacts/CoinABI.json": "coinArtifact",
         web3: "Web3",
         react: "React",
         "react-dom": "ReactDOM",
@@ -29,7 +31,15 @@ export default {
       assetFileNames: "assets/[name][extname]",
     },
   ],
-  external: ["djed-sdk", "web3", "react", "react-dom", "viem", "viem/chains"],
+  external: [
+    "djed-sdk", 
+    "djed-sdk/src/artifacts/CoinABI.json", 
+    "web3", 
+    "react", 
+    "react-dom", 
+    "viem", 
+    "viem/chains"
+  ],
   plugins: [
     resolve({
       extensions: [".js", ".jsx"],
@@ -43,7 +53,7 @@ export default {
       limit: 0,
       fileName: "[name][extname]",
       destDir: "dist/assets",
-      publicPath: "../assets/", //note:use relative path here
+      publicPath: "../assets/", 
       emitFiles: true,
     }),
     postcss({
@@ -51,9 +61,7 @@ export default {
       extract: "styles.css",
       minimize: true,
       modules: true,
-
       use: ["sass"],
-
       url: {
         url: "rebase", 
       },

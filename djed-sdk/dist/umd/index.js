@@ -162,6 +162,7 @@
     (FEE_UI / 100).toString(),
     SCALING_DECIMALS
   );
+
   const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
     const amountUnscaled = decimalUnscaling(amountScaled, decimals);
     return scaledUnscaledPromise(web3Promise$1(djed, method, 0), BC_DECIMALS).then(
@@ -187,29 +188,11 @@
     );
   };
 
-  /**
-   * Function that converts coin amount to BC
-   * @param {*} amount unscaled coin amount to be converted to BC
-   * @param {*} price unscaled coin price
-   * @param {*} decimals coin decimals
-   * @returns unscaled BC amount
-   */
   const convertToBC = (amount, price, decimals) => {
     const decimalScalingFactor = BigInt(Math.pow(10, decimals));
     return (BigInt(amount) * BigInt(price)) / decimalScalingFactor;
   };
 
-  /**
-   * Calculate if the transaction will reach the maximum reserve ratio
-   * @param scPrice - Unscaled stablecoin price
-   * @param reserveBc - Unscaled reserve of base coin with appended potential transaction amount.
-   * Example: If user wants to buy 1RC, the reserveBc param will be calculated as sum of current reserve of BC and desired RC amount converted in BC
-   * @param totalScSupply - Unscaled total stablecoin supply
-   * @param reserveRatioMax - Unscaled maximum reserve ratio
-   * @param scDecimalScalingFactor - If stablecoin has 6 decimals, scDecimalScalingFactor will be calculated as 10^6
-   * @param thresholdSupplySC - Unscaled threshold SC supply
-   * @returns
-   */
   const calculateIsRatioBelowMax = ({
     scPrice,
     reserveBc,
@@ -227,16 +210,6 @@
     );
   };
 
-  /**
-   * Calculate if the transaction will reach the minimum reserve ratio
-   * @param scPrice - Unscaled stablecoin price
-   * @param reserveBc - Unscaled reserve of base coin with calculated potential transaction amount.
-   * Example: If user wants to buy 1SC, the reserveBc param will be calculated as sum of current reserve of BC and desired SC amount converted in BC
-   * @param totalScSupply - Unscaled total stablecoin supply
-   * @param reserveRatioMin - Unscaled minimum reserve ratio
-   * @param scDecimalScalingFactor - If stablecoin has 6 decimals, scDecimalScalingFactor will be calculated as 10^6
-   * @returns
-   */
   const calculateIsRatioAboveMin = ({
     scPrice,
     reserveBc,
@@ -252,15 +225,8 @@
     );
   };
 
-  /**
-   *
-   * @param {*} amountUSD
-   * @param {*} totalSCSupply
-   * @param {*} thresholdSCSupply
-   * @returns
-   */
-  const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
-    amountUSD > TRANSACTION_USD_LIMIT &&
+  const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply, txLimit) =>
+    (BigInt(amountUSD) > BigInt(txLimit || TRANSACTION_USD_LIMIT)) &&
     BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
   const promiseTx = (isWalletConnected, tx, signer) => {
@@ -283,13 +249,6 @@
     });
   };
 
-  /**
-   * Function that deducts all platform fees from the BC amount
-   * @param {*} value The amount of BC from which fees should be deducted
-   * @param {*} fee The platform fee
-   * @param {*} treasuryFee The treasury fee
-   * @returns BC value with all fees calculated
-   */
   const calculateTxFees = (value, fee, treasuryFee, feeUI) => {
     const f = (BigInt(value) * BigInt(fee)) / BigInt(scalingFactor);
     const f_ui =
@@ -299,26 +258,11 @@
     return { f, f_ui, f_t };
   };
 
-  /**
-   * Function that deducts all platform fees from the BC amount
-   * @param {*} value The amount of BC from which fees should be deducted
-   * @param {*} fee The platform fee
-   * @param {*} treasuryFee The treasury fee
-   * @returns BC value with all fees calculated
-   */
   const deductFees = (value, fee, treasuryFee) => {
     const { f, f_ui, f_t } = calculateTxFees(value, fee, treasuryFee);
     return BigInt(value) - f - f_ui - f_t;
   };
 
-  /**
-   * Function that appends all platform fees to the BC amount
-   * @param {*} amountBC The unscaled amount of BC (e.g. for 1BC, value should be 1 * 10^BC_DECIMALS)
-   * @param {*} treasuryFee Treasury fee unscaled (e.g. If the fee is 1%, than 1/100 * scalingFactor)
-   * @param {*} fee Fee unscaled (e.g. If the fee is 1%, than 1/100 * scalingFactor)
-   * @param {*} fee_UI UI fee unscaled (e.g. If the fee is 1%, than 1/100 * scalingFactor)
-   * @returns Unscaled BC amount with calculated fees
-   */
   const appendFees = (amountBC, treasuryFee, fee, fee_UI) => {
     const totalFees = BigInt(treasuryFee) + BigInt(fee) + BigInt(fee_UI);
     const substractedFees = BigInt(scalingFactor) - totalFees;
@@ -328,11 +272,6 @@
     return appendedFeesAmount.toString();
   };
 
-  /**
-   * Function that returns treasury and platform fees
-   * @param {*} djed Djed contract
-   * @returns Treasury and platform fee
-   */
   const getFees = async (djed) => {
     try {
       const [treasuryFee, fee] = await Promise.all([
@@ -345,6 +284,23 @@
       };
     } catch (error) {
       console.log("error", error);
+    }
+  };
+
+  /**
+   * Added getPriceMethod export to fix Rollup Error
+   */
+  const getPriceMethod = async (djed, operation) => {
+    const isShu = await djed.methods.scMaxPrice(0).call().then(() => true).catch(() => false);
+    
+    if (!isShu) return "scPrice";
+
+    switch (operation) {
+      case 'buySC': return "scMaxPrice";
+      case 'sellSC': return "scMinPrice";
+      case 'buyRC': return "scMinPrice";
+      case 'sellRC': return "scMaxPrice";
+      default: return "scPrice";
     }
   };
 
@@ -547,8 +503,139 @@
     }
   };
 
-  var contractName$2 = "Djed";
-  var abi$2 = [
+  /**
+   * Function that calculates fees and how much BC (totalBCAmount) user will receive if he sells desired amount of stable coin and reserve coin
+   * @param {*} djed DjedContract
+   * @param {*} scDecimals Stable coin decimals
+   * @param {*} rcDecimals Reserve coin decimals
+   * @param {*} amountScScaled Stable coin amount that user wants to sell
+   * @param {*} amountRcScaled Reserve coin amount that user wants to sell
+   * @returns
+   */
+  const tradeDataPriceSellBoth = async (
+    djed,
+    scDecimals,
+    rcDecimals,
+    amountScScaled,
+    amountRcScaled
+  ) => {
+    try {
+      const scPriceMethod = await getPriceMethod(djed, 'sellSC');
+      const [scPriceData, rcPriceData] = await Promise.all([
+        scaledUnscaledPromise(web3Promise$1(djed, scPriceMethod, 0), BC_DECIMALS),
+        scaledUnscaledPromise(web3Promise$1(djed, "rcTargetPrice", 0), BC_DECIMALS),
+      ]);
+
+      const amountScUnscaled = decimalUnscaling(amountScScaled, scDecimals);
+      const amountRcUnscaled = decimalUnscaling(amountRcScaled, rcDecimals);
+
+      const scValueBC = convertToBC(
+        amountScUnscaled,
+        scPriceData[1],
+        scDecimals
+      );
+      const rcValueBC = convertToBC(
+        amountRcUnscaled,
+        rcPriceData[1],
+        rcDecimals
+      );
+
+      const totalValueBC = (BigInt(scValueBC) + BigInt(rcValueBC)).toString();
+
+      const { treasuryFee, fee } = await getFees(djed);
+      const totalBCAmount = deductFees(totalValueBC, fee, treasuryFee);
+
+      return {
+        scPriceScaled: scPriceData[0],
+        scPriceUnscaled: scPriceData[1],
+        rcPriceScaled: rcPriceData[0],
+        rcPriceUnscaled: rcPriceData[1],
+        amountScUnscaled,
+        amountRcUnscaled,
+        totalBCScaled: decimalScaling(totalBCAmount.toString(), BC_DECIMALS),
+        totalBCUnscaled: totalBCAmount.toString(),
+      };
+    } catch (error) {
+      console.error("Error in tradeDataPriceSellBoth:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Function to sell both stablecoins and reservecoins
+   * @param {*} djed DjedContract
+   * @param {*} account User address
+   * @param {*} amountSC Unscaled amount of stablecoins to sell
+   * @param {*} amountRC Unscaled amount of reservecoins to sell
+   * @param {*} UI UI address for fee
+   * @param {*} DJED_ADDRESS Address of Djed contract
+   * @returns 
+   */
+  const sellBothTx = (
+    djed,
+    account,
+    amountSC,
+    amountRC,
+    UI,
+    DJED_ADDRESS
+  ) => {
+    const data = djed.methods
+      .sellBothCoins(amountSC, amountRC, account, FEE_UI_UNSCALED, UI)
+      .encodeABI();
+    return buildTx(account, DJED_ADDRESS, 0, data);
+  };
+
+  // # ISIS / TEFNUT Transaction Functions (ERC20 Base Asset)
+
+  /**
+   * Buy StableCoins (Isis/Tefnut Variant - ERC20 Base Asset)
+   * Note: Caller must APPROVE the Djed contract to spend `amountBC` of the Base Asset before calling this.
+   */
+  const buyScIsisTx = (djed, payer, receiver, amountBC, UI, DJED_ADDRESS) => {
+    // Signature: buyStableCoins(uint256 amountBC, address receiver, uint256 feeUI, address ui)
+    const data = djed.methods
+      .buyStableCoins(amountBC, receiver, FEE_UI_UNSCALED, UI)
+      .encodeABI();
+    
+    // Value is 0 because Base Asset is ERC20 transferFrom, not msg.value
+    return buildTx(payer, DJED_ADDRESS, 0, data);
+  };
+
+  const sellScIsisTx = (djed, account, amountSC, UI, DJED_ADDRESS) => {
+      // Signature: sellStableCoins(uint256 amountSC, address receiver, uint256 feeUI, address ui)
+      const data = djed.methods
+        .sellStableCoins(amountSC, account, FEE_UI_UNSCALED, UI)
+        .encodeABI();
+      return buildTx(account, DJED_ADDRESS, 0, data);
+  };
+
+  const buyRcIsisTx = (djed, payer, receiver, amountBC, UI, DJED_ADDRESS) => {
+      // Signature: buyReserveCoins(uint256 amountBC, address receiver, uint256 feeUI, address ui)
+      const data = djed.methods
+        .buyReserveCoins(amountBC, receiver, FEE_UI_UNSCALED, UI)
+        .encodeABI();
+      
+      return buildTx(payer, DJED_ADDRESS, 0, data);
+    };
+    
+  const sellRcIsisTx = (djed, account, amountRC, UI, DJED_ADDRESS) => {
+      // Signature: sellReserveCoins(uint256 amountRC, address receiver, uint256 feeUI, address ui)
+      const data = djed.methods
+        .sellReserveCoins(amountRC, account, FEE_UI_UNSCALED, UI)
+        .encodeABI();
+      return buildTx(account, DJED_ADDRESS, 0, data);
+  };
+
+  const sellBothIsisTx = (djed, account, amountSC, amountRC, UI, DJED_ADDRESS) => {
+      // Signature: sellBothCoins(uint256 amountSC, uint256 amountRC, address receiver, uint256 feeUI, address ui)
+      const data = djed.methods
+        .sellBothCoins(amountSC, amountRC, account, FEE_UI_UNSCALED, UI)
+        .encodeABI();
+      return buildTx(account, DJED_ADDRESS, 0, data);
+  };
+
+  var contractName$4 = "Djed";
+  var abi$7 = [
   	{
   		inputs: [
   			{
@@ -1274,12 +1361,1644 @@
   	}
   ];
   var djedArtifact = {
+  	contractName: contractName$4,
+  	abi: abi$7
+  };
+
+  var contractName$3 = "Djed";
+  var abi$6 = [
+  	{
+  		inputs: [
+  			{
+  				internalType: "address",
+  				name: "oracleAddress",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_scalingFactor",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "_treasury",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_initialTreasuryFee",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_treasuryRevenueTarget",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_reserveRatioMin",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_reserveRatioMax",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_fee",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_thresholdSupplySC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_rcMinPrice",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_txLimit",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "payable",
+  		type: "constructor"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "buyer",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "BoughtReserveCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "buyer",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "BoughtStableCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "seller",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "SoldBothCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "seller",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "SoldReserveCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "seller",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "SoldStableCoins",
+  		type: "event"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "E",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "L",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "R",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amount",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "fee_ui",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "buyReserveCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amount",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "feeUI",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "buyStableCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "fee",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "initialTreasuryFee",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "oracle",
+  		outputs: [
+  			{
+  				internalType: "contract IFreeOracle",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "ratio",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "rcBuyingPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "rcDecimalScalingFactor",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "rcMinPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "rcTargetPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "reserveCoin",
+  		outputs: [
+  			{
+  				internalType: "contract Coin",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "reserveRatioMax",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "reserveRatioMin",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "scDecimalScalingFactor",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "scPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "scalingFactor",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "fee_ui",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "sellBothCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "fee_ui",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "sellReserveCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "feeUI",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "sellStableCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "stableCoin",
+  		outputs: [
+  			{
+  				internalType: "contract Coin",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "thresholdSupplySC",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasury",
+  		outputs: [
+  			{
+  				internalType: "address",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasuryFee",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasuryRevenue",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasuryRevenueTarget",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "txLimit",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "scMaxPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "scMinPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "ratioMax",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "ratioMin",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "updateOracleValues",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	}
+  ];
+  var djedIsisArtifact = {
+  	contractName: contractName$3,
+  	abi: abi$6
+  };
+
+  var contractName$2 = "Djed";
+  var abi$5 = [
+  	{
+  		inputs: [
+  			{
+  				internalType: "address",
+  				name: "oracleAddress",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_scalingFactor",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "_treasury",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_initialTreasuryFee",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_treasuryRevenueTarget",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_reserveRatioMin",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_reserveRatioMax",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_fee",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_thresholdSupplySC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_rcMinPrice",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "_txLimit",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "payable",
+  		type: "constructor"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "buyer",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "BoughtReserveCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "buyer",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "BoughtStableCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "seller",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "SoldBothCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "seller",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "SoldReserveCoins",
+  		type: "event"
+  	},
+  	{
+  		anonymous: false,
+  		inputs: [
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "seller",
+  				type: "address"
+  			},
+  			{
+  				indexed: true,
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				indexed: false,
+  				internalType: "uint256",
+  				name: "amountBC",
+  				type: "uint256"
+  			}
+  		],
+  		name: "SoldStableCoins",
+  		type: "event"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "E",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "L",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "R",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amount",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "fee_ui",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "buyReserveCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amount",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "feeUI",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "buyStableCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "fee",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "initialTreasuryFee",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "oracle",
+  		outputs: [
+  			{
+  				internalType: "contract IFreeOracle",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "ratio",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "rcBuyingPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "rcDecimalScalingFactor",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "rcMinPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "rcTargetPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "reserveCoin",
+  		outputs: [
+  			{
+  				internalType: "contract Coin",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "reserveRatioMax",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "reserveRatioMin",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "scDecimalScalingFactor",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "scPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "scalingFactor",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "fee_ui",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "sellBothCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amountRC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "fee_ui",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "sellReserveCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "amountSC",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "receiver",
+  				type: "address"
+  			},
+  			{
+  				internalType: "uint256",
+  				name: "feeUI",
+  				type: "uint256"
+  			},
+  			{
+  				internalType: "address",
+  				name: "ui",
+  				type: "address"
+  			}
+  		],
+  		name: "sellStableCoins",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "stableCoin",
+  		outputs: [
+  			{
+  				internalType: "contract Coin",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "thresholdSupplySC",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasury",
+  		outputs: [
+  			{
+  				internalType: "address",
+  				name: "",
+  				type: "address"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasuryFee",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasuryRevenue",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "treasuryRevenueTarget",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "txLimit",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "scMaxPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  			{
+  				internalType: "uint256",
+  				name: "_currentPaymentAmount",
+  				type: "uint256"
+  			}
+  		],
+  		name: "scMinPrice",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "ratioMax",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "ratioMin",
+  		outputs: [
+  			{
+  				internalType: "uint256",
+  				name: "",
+  				type: "uint256"
+  			}
+  		],
+  		stateMutability: "view",
+  		type: "function"
+  	},
+  	{
+  		inputs: [
+  		],
+  		name: "updateOracleValues",
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable",
+  		type: "function"
+  	}
+  ];
+  var djedTefnutArtifact = {
   	contractName: contractName$2,
-  	abi: abi$2
+  	abi: abi$5
   };
 
   var contractName$1 = "Coin";
-  var abi$1 = [
+  var abi$4 = [
   	{
   		inputs: [
   			{
@@ -1611,12 +3330,24 @@
   ];
   var coinArtifact = {
   	contractName: contractName$1,
-  	abi: abi$1
+  	abi: abi$4
   };
 
-  //setting up djed
+  // Standard Djed (Osiris / Native)
   const getDjedContract = (web3, DJED_ADDRESS) => {
     const djed = new web3.eth.Contract(djedArtifact.abi, DJED_ADDRESS);
+    return djed;
+  };
+
+  // Djed Isis (ERC20 Backed)
+  const getDjedIsisContract = (web3, DJED_ADDRESS) => {
+    const djed = new web3.eth.Contract(djedIsisArtifact.abi, DJED_ADDRESS);
+    return djed;
+  };
+
+  // Djed Tefnut
+  const getDjedTefnutContract = (web3, DJED_ADDRESS) => {
+    const djed = new web3.eth.Contract(djedTefnutArtifact.abi, DJED_ADDRESS);
     return djed;
   };
 
@@ -1632,6 +3363,7 @@
     );
     return { stableCoin, reserveCoin };
   };
+
   const getDecimals = async (stableCoin, reserveCoin) => {
     const [scDecimals, rcDecimals] = await Promise.all([
       convertInt(web3Promise$1(stableCoin, "decimals")),
@@ -1780,8 +3512,84 @@
     };
   };
 
+  /**
+   * Utility to listen for Djed contract events
+   * @param {Object} djedContract - The Web3 contract instance
+   * @param {Object} callbacks - Object containing callback functions for different events
+   */
+  const subscribeToDjedEvents = (djedContract, callbacks) => {
+    const events = [
+      { name: "BoughtStableCoins", cb: callbacks.onBoughtStableCoins },
+      { name: "SoldStableCoins", cb: callbacks.onSoldStableCoins },
+      { name: "BoughtReserveCoins", cb: callbacks.onBoughtReserveCoins },
+      { name: "SoldReserveCoins", cb: callbacks.onSoldReserveCoins },
+      { name: "SoldBothCoins", cb: callbacks.onSoldBothCoins },
+    ];
+
+    const subscriptions = [];
+
+    events.forEach((event) => {
+      if (event.cb) {
+        const sub = djedContract.events[event.name]({
+          fromBlock: "latest",
+        })
+          .on("data", (data) => {
+            event.cb(data.returnValues);
+          })
+          .on("error", (err) => {
+            if (callbacks.onError) callbacks.onError(err);
+            else console.error(`Error in ${event.name} subscription:`, err);
+          });
+        subscriptions.push(sub);
+      }
+    });
+
+    return {
+      unsubscribe: () => {
+        subscriptions.forEach((sub) => {
+          if (sub.unsubscribe) sub.unsubscribe();
+        });
+      },
+    };
+  };
+
+  /**
+   * Utility to fetch past events from the Djed contract
+   * @param {Object} djedContract - The Web3 contract instance
+   * @param {string} eventName - Name of the event
+   * @param {Object} filter - Web3 filter object (e.g., { buyer: '0x...' })
+   * @param {number|string} fromBlock - Starting block
+   * @returns {Promise<Array>} - Array of past events
+   */
+  const getPastDjedEvents = async (
+    djedContract,
+    eventName,
+    filter = {},
+    fromBlock = 0
+  ) => {
+    try {
+      return await djedContract.getPastEvents(eventName, {
+        filter,
+        fromBlock,
+        toBlock: "latest",
+      });
+    } catch (error) {
+      console.error(`Error fetching past events for ${eventName}:`, error);
+      throw error;
+    }
+  };
+
+  const approveTx = (tokenContract, owner, spender, amount) => {
+    const data = tokenContract.methods.approve(spender, amount).encodeABI();
+    return buildTx(owner, tokenContract.options.address, 0, data);
+  };
+
+  const checkAllowance = async (tokenContract, owner, spender) => {
+    return await tokenContract.methods.allowance(owner, spender).call();
+  };
+
   var contractName = "Oracle";
-  var abi = [
+  var abi$3 = [
   	{
   		inputs: [
   			{
@@ -2256,6 +4064,259 @@
   ];
   var oracleArtifact = {
   	contractName: contractName,
+  	abi: abi$3
+  };
+
+  var abi$2 = [
+  	{
+  		type: "constructor",
+  		inputs: [
+  			{
+  				name: "_ref",
+  				type: "address",
+  				internalType: "contract IStdReference"
+  			},
+  			{
+  				name: "_decimals",
+  				type: "uint8",
+  				internalType: "uint8"
+  			},
+  			{
+  				name: "_hebeSwapDecimals",
+  				type: "uint8",
+  				internalType: "uint8"
+  			},
+  			{
+  				name: "_baseToken",
+  				type: "string",
+  				internalType: "string"
+  			},
+  			{
+  				name: "_quoteToken",
+  				type: "string",
+  				internalType: "string"
+  			}
+  		],
+  		stateMutability: "nonpayable"
+  	},
+  	{
+  		type: "function",
+  		name: "acceptTermsOfService",
+  		inputs: [
+  		],
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable"
+  	},
+  	{
+  		type: "function",
+  		name: "baseToken",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "string",
+  				internalType: "string"
+  			}
+  		],
+  		stateMutability: "view"
+  	},
+  	{
+  		type: "function",
+  		name: "quoteToken",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "string",
+  				internalType: "string"
+  			}
+  		],
+  		stateMutability: "view"
+  	},
+  	{
+  		type: "function",
+  		name: "readData",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "view"
+  	},
+  	{
+  		type: "function",
+  		name: "ref",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "address",
+  				internalType: "contract IStdReference"
+  			}
+  		],
+  		stateMutability: "view"
+  	},
+  	{
+  		type: "function",
+  		name: "scalingFactor",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "view"
+  	}
+  ];
+  var hebeSwapOracleArtifact = {
+  	abi: abi$2
+  };
+
+  var abi$1 = [
+  	{
+  		type: "constructor",
+  		inputs: [
+  			{
+  				name: "_dataFeedAddress",
+  				type: "address",
+  				internalType: "address"
+  			},
+  			{
+  				name: "_decimals",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "nonpayable"
+  	},
+  	{
+  		type: "function",
+  		name: "acceptTermsOfService",
+  		inputs: [
+  		],
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable"
+  	},
+  	{
+  		type: "function",
+  		name: "readData",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "view"
+  	},
+  	{
+  		type: "function",
+  		name: "scalingFactor",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "view"
+  	}
+  ];
+  var chainlinkOracleArtifact = {
+  	abi: abi$1
+  };
+
+  var abi = [
+  	{
+  		type: "constructor",
+  		inputs: [
+  			{
+  				name: "_proxyAddress",
+  				type: "address",
+  				internalType: "address"
+  			},
+  			{
+  				name: "_api3Decimals",
+  				type: "uint256",
+  				internalType: "uint256"
+  			},
+  			{
+  				name: "_decimals",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "nonpayable"
+  	},
+  	{
+  		type: "function",
+  		name: "acceptTermsOfService",
+  		inputs: [
+  		],
+  		outputs: [
+  		],
+  		stateMutability: "nonpayable"
+  	},
+  	{
+  		type: "function",
+  		name: "proxyAddress",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "address",
+  				internalType: "address"
+  			}
+  		],
+  		stateMutability: "view"
+  	},
+  	{
+  		type: "function",
+  		name: "readData",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "view"
+  	},
+  	{
+  		type: "function",
+  		name: "scalingFactor",
+  		inputs: [
+  		],
+  		outputs: [
+  			{
+  				name: "",
+  				type: "uint256",
+  				internalType: "uint256"
+  			}
+  		],
+  		stateMutability: "view"
+  	}
+  ];
+  var api3OracleArtifact = {
   	abi: abi
   };
 
@@ -2270,9 +4331,42 @@
     return oracle;
   };
 
+  /**
+   * Added export to resolve Rollup error
+   */
+  const getHebeSwapOracleContract = (web3, oracleAddress, msgSender) => {
+    const oracle = new web3.eth.Contract(hebeSwapOracleArtifact.abi, oracleAddress, {
+      from: msgSender
+    });
+    return oracle;
+  };
+
+  /**
+   * Added export to resolve Rollup error
+   */
+  const getChainlinkOracleContract = (web3, oracleAddress, msgSender) => {
+    const oracle = new web3.eth.Contract(chainlinkOracleArtifact.abi, oracleAddress, {
+      from: msgSender
+    });
+    return oracle;
+  };
+
+  /**
+   * Added export to resolve Rollup error
+   */
+  const getAPI3OracleContract = (web3, oracleAddress, msgSender) => {
+    const oracle = new web3.eth.Contract(api3OracleArtifact.abi, oracleAddress, {
+      from: msgSender
+    });
+    return oracle;
+  };
+
   exports.FEE_UI_UNSCALED = FEE_UI_UNSCALED;
   exports.appendFees = appendFees;
+  exports.approveTx = approveTx;
+  exports.buyRcIsisTx = buyRcIsisTx;
   exports.buyRcTx = buyRcTx;
+  exports.buyScIsisTx = buyScIsisTx;
   exports.buyScTx = buyScTx;
   exports.calculateBcUsdEquivalent = calculateBcUsdEquivalent;
   exports.calculateFutureScPrice = calculateFutureScPrice;
@@ -2280,17 +4374,24 @@
   exports.calculateIsRatioBelowMax = calculateIsRatioBelowMax;
   exports.calculateRcUsdEquivalent = calculateRcUsdEquivalent;
   exports.calculateTxFees = calculateTxFees;
+  exports.checkAllowance = checkAllowance;
   exports.convertToBC = convertToBC;
   exports.deductFees = deductFees;
+  exports.getAPI3OracleContract = getAPI3OracleContract;
   exports.getAccountDetails = getAccountDetails;
   exports.getBcUsdEquivalent = getBcUsdEquivalent;
+  exports.getChainlinkOracleContract = getChainlinkOracleContract;
   exports.getCoinContracts = getCoinContracts;
   exports.getCoinDetails = getCoinDetails;
   exports.getDecimals = getDecimals;
   exports.getDjedContract = getDjedContract;
+  exports.getDjedIsisContract = getDjedIsisContract;
+  exports.getDjedTefnutContract = getDjedTefnutContract;
   exports.getFees = getFees;
+  exports.getHebeSwapOracleContract = getHebeSwapOracleContract;
   exports.getOracleAddress = getOracleAddress;
   exports.getOracleContract = getOracleContract;
+  exports.getPastDjedEvents = getPastDjedEvents;
   exports.getRcUsdEquivalent = getRcUsdEquivalent;
   exports.getScAdaEquivalent = getScAdaEquivalent;
   exports.getSystemParams = getSystemParams;
@@ -2298,11 +4399,17 @@
   exports.isTxLimitReached = isTxLimitReached;
   exports.promiseTx = promiseTx;
   exports.scalingFactor = scalingFactor;
+  exports.sellBothIsisTx = sellBothIsisTx;
+  exports.sellBothTx = sellBothTx;
+  exports.sellRcIsisTx = sellRcIsisTx;
   exports.sellRcTx = sellRcTx;
+  exports.sellScIsisTx = sellScIsisTx;
   exports.sellScTx = sellScTx;
+  exports.subscribeToDjedEvents = subscribeToDjedEvents;
   exports.tradeDataPriceBuyRc = tradeDataPriceBuyRc;
   exports.tradeDataPriceBuySc = tradeDataPriceBuySc;
   exports.tradeDataPriceCore = tradeDataPriceCore;
+  exports.tradeDataPriceSellBoth = tradeDataPriceSellBoth;
   exports.tradeDataPriceSellRc = tradeDataPriceSellRc;
   exports.tradeDataPriceSellSc = tradeDataPriceSellSc;
   exports.verifyTx = verifyTx;

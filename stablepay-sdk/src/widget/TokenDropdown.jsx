@@ -16,47 +16,53 @@ const TokenDropdown = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleTokenChange = async (event) => {
-    const newValue = event.target.value;
+ const handleTokenChange = async (event) => {
+    const newValue = event.target.value; // e.g., 'djed-eth'
     setError(null);
     setLoading(true);
 
     try {
       if (selectToken(newValue)) {
         const networkConfig = networkSelector.getSelectedNetworkConfig();
+        
+        // Find the specific stablecoin object matching the selected ID
+        const selectedStablecoin = networkConfig.stablecoins.find(
+          (sc) => sc.id === newValue
+        );
+
+        if (!selectedStablecoin) {
+          throw new Error("Stablecoin configuration not found");
+        }
+
+        // Pass the full stablecoin object (replaces the removed djedAddress)
         const transaction = new Transaction(
           networkConfig.uri,
-          networkConfig.djedAddress
+          selectedStablecoin 
         );
         await transaction.init();
 
-        const tokenAmount = networkSelector.getTokenAmount(newValue);
+        const tokenAmount = networkSelector.getTokenAmount(newValue); 
         const blockchainDetails = transaction.getBlockchainDetails();
-
-        let tradeData = null;
-        if (newValue === "native") {
-          tradeData = await transaction.handleTradeDataBuySc(
-            String(tokenAmount)
-          );
-        }
 
         setTransactionDetails({
           network: selectedNetwork,
           token: newValue,
-          tokenSymbol: tokenSelector.getSelectedToken().symbol,
+          tokenSymbol: selectedStablecoin.stableCoin.symbol,
           amount: tokenAmount,
           receivingAddress: networkSelector.getReceivingAddress(),
-          djedContractAddress: networkConfig.djedAddress,
-          isDirectTransfer:
-            tokenSelector.getSelectedToken().isDirectTransfer || false,
-          isNativeToken: tokenSelector.getSelectedToken().isNative || false,
-          tradeAmount: tradeData ? tradeData.amount : null,
+          
+          // Use properties from the selected stablecoin object
+          djedContractAddress: selectedStablecoin.contractAddress,
+          isDirectTransfer: selectedStablecoin.stableCoin.isDirectTransfer || false,
+          baseAssetSymbol: selectedStablecoin.baseAsset.symbol,
+          baseAssetDecimals: selectedStablecoin.baseAsset.decimals,
+          baseAssetIsNative: selectedStablecoin.baseAsset.isNative,
           ...blockchainDetails,
         });
       }
     } catch (err) {
-      console.error("Error fetching transaction details:", err);
-      setError("Failed to fetch transaction details. Please try again.");
+      console.error("Error updating transaction details:", err);
+      setError("Failed to initialize transaction.");
     } finally {
       setLoading(false);
     }
