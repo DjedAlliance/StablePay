@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>StablePay Test</title>
+  <script src="./index.js"></script>
+</head>
+<body>
+  <h2>Test Web3 Init</h2>
+  <button onclick="testWeb3()">Connect Wallet</button>
+
+  <script>
+    async function testWeb3() {
+      if (typeof window.ethereum === "undefined") {
+        alert("MetaMask not installed");
+        return;
+      }
+
+      try {
+        const web3 = await StablePay.getWeb3("https://mainnet.infura.io/v3/YOUR_KEY");
+        console.log("Web3 instance:", web3);
+        alert("Connected! Check console.");
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
