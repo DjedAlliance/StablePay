@@ -127,12 +127,23 @@ export const promiseTx = (isWalletConnected, tx, web3) => {
     return Promise.reject(new Error("Web3 instance not provided"));
   }
 
-  return web3.eth.sendTransaction({
-    from: tx.from,
-    to: tx.to,
-    value: tx.value,
-    data: tx.data,
-    gas: tx.gasLimit || 500000,
+  if (!tx?.from) {
+    return Promise.reject(new Error("Transaction 'from' address is required"));
+  }
+
+  const selectedGas = tx.gas ?? tx.gasLimit ?? 500000;
+
+  return new Promise((resolve, reject) => {
+    web3.eth
+      .sendTransaction({
+        from: tx.from,
+        to: tx.to,
+        value: tx.value,
+        data: tx.data,
+        gas: selectedGas,
+      })
+      .on("receipt", resolve)
+      .on("error", reject);
   });
 };
 

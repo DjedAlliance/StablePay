@@ -160,7 +160,7 @@
   const scalingFactor = decimalUnscaling("1", SCALING_DECIMALS);
   const FEE_UI_UNSCALED = decimalUnscaling(
     (FEE_UI / 100).toString(),
-    SCALING_DECIMALS
+    SCALING_DECIMALS,
   );
   const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
     const amountUnscaled = decimalUnscaling(amountScaled, decimals);
@@ -170,7 +170,7 @@
         const totalUnscaled = convertToBC(
           amountUnscaled,
           priceUnscaled,
-          decimals
+          decimals,
         ).toString();
 
         const totalScaled = decimalScaling(totalUnscaled, BC_DECIMALS);
@@ -183,7 +183,7 @@
           priceUnscaled,
           priceScaled,
         };
-      }
+      },
     );
   };
 
@@ -263,14 +263,33 @@
     amountUSD > TRANSACTION_USD_LIMIT &&
     BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
-  const promiseTx = (isWalletConnected, tx, signer) => {
+  const promiseTx = (isWalletConnected, tx, web3) => {
     if (!isWalletConnected) {
       return Promise.reject(new Error("Metamask not connected!"));
     }
-    if (!signer) {
-      return Promise.reject(new Error("Couldn't get Signer"));
+
+    if (!web3 || !web3.eth) {
+      return Promise.reject(new Error("Web3 instance not provided"));
     }
-    return signer.sendTransaction(tx);
+
+    if (!tx?.from) {
+      return Promise.reject(new Error("Transaction 'from' address is required"));
+    }
+
+    const selectedGas = tx.gas ?? tx.gasLimit ?? 500000;
+
+    return new Promise((resolve, reject) => {
+      web3.eth
+        .sendTransaction({
+          from: tx.from,
+          to: tx.to,
+          value: tx.value,
+          data: tx.data,
+          gas: selectedGas,
+        })
+        .on("receipt", resolve)
+        .on("error", reject);
+    });
   };
 
   const verifyTx = (web3, hash) => {
