@@ -128,14 +128,17 @@ export const promiseTx = (isWalletConnected, tx, signer) => {
   return signer.sendTransaction(tx);
 };
 
-export const verifyTx = (web3, hash) => {
-  return new Promise((res) => {
-    setTimeout(() => {
-      web3.eth
-        .getTransactionReceipt(hash)
-        .then((receipt) => res(receipt.status));
-    }, CONFIRMATION_WAIT_PERIOD);
-  });
+export const verifyTx = async (publicClient, hash) => {
+  try {
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash,
+    });
+
+    return receipt.status === "success";
+  } catch (error) {
+    console.error("verifyTx error:", error);
+    return false;
+  }
 };
 
 /**
