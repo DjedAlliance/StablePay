@@ -29,7 +29,7 @@ export default {
       assetFileNames: "assets/[name][extname]",
     },
   ],
-  external: ["djed-sdk", "web3", "react", "react-dom", "viem", "viem/chains"],
+  external: [ "react", "react-dom", "viem", "viem/chains"],
   plugins: [
     resolve({
       extensions: [".js", ".jsx"],

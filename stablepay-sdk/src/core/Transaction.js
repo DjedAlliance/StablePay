@@ -1,120 +1,120 @@
-import { getWeb3, getDjedContract, getCoinContracts, getDecimals, getOracleAddress, getOracleContract, tradeDataPriceBuySc, buyScTx } from 'djed-sdk';
+import { createPublicClient, createWalletClient, http } from 'viem'
+import { getContract } from 'viem'
+import { mainnet, sepolia } from 'viem/chains'
+import DJED_ABI from '../abi/Djed.json'
+import ERC20_ABI from '../abi/ERC20.json'
+
+const BC_DECIMALS = 18n
+const SCALING_DECIMALS = 24n
+const FEE_UI = 1n // 0.01% scaled later
+const UI_ADDRESS = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839'
 
 export class Transaction {
   constructor(networkUri, djedAddress) {
-    this.networkUri = networkUri;
-    this.djedAddress = djedAddress;
+    this.networkUri = networkUri
+    this.djedAddress = djedAddress
   }
 
   async init() {
-    if (!this.networkUri || !this.djedAddress) {
-      throw new Error('Network URI and DJED address are required');
-    }
+    const chain = this.networkUri.includes('sepolia') ? sepolia : mainnet
 
-    try {
-      this.web3 = await getWeb3(this.networkUri);
-      this.djedContract = getDjedContract(this.web3, this.djedAddress);
-      
-      try {
-      const { stableCoin, reserveCoin } = await getCoinContracts(this.djedContract, this.web3);
-      const { scDecimals, rcDecimals } = await getDecimals(stableCoin, reserveCoin);
-      this.stableCoin = stableCoin;
-      this.reserveCoin = reserveCoin;
-      this.scDecimals = scDecimals;
-      this.rcDecimals = rcDecimals;
+    this.publicClient = createPublicClient({
+      chain,
+      transport: http(this.networkUri)
+    })
 
-      this.oracleContract = await getOracleAddress(this.djedContract).then((addr) =>
-        getOracleContract(this.web3, addr, this.djedContract._address)
-      );
+    this.djedContract = getContract({
+      address: this.djedAddress,
+      abi: DJED_ABI,
+      client: this.publicClient
+    })
 
-      this.oracleAddress = this.oracleContract._address;
-      } catch (contractError) {
-        console.error('[Transaction] Error fetching contract details:', contractError);
-        if (contractError.message && contractError.message.includes('execution reverted')) {
-          const getNetworkInfo = (uri) => {
-            if (uri.includes('milkomeda')) return { name: 'Milkomeda', chainId: '2001' };
-            if (uri.includes('mordor')) return { name: 'Mordor Testnet', chainId: '63' };
-            if (uri.includes('sepolia')) return { name: 'Sepolia', chainId: '11155111' };
-            if (uri.includes('etc.rivet.link')) return { name: 'Ethereum Classic', chainId: '61' };
-            return { name: 'the selected network', chainId: 'unknown' };
-          };
-          const { name: networkName, chainId } = getNetworkInfo(this.networkUri);
-          throw new Error(
-            `Failed to interact with Djed contract at ${this.djedAddress} on ${networkName}.\n\n` +
-            `Possible causes:\n` +
-            `- The contract address may be incorrect\n` +
-            `- The contract may not be deployed on ${networkName}\n` +
-            `- The contract may not be a valid Djed contract\n\n` +
-            `Please verify the contract address is correct for ${networkName} (Chain ID: ${chainId}).`
-          );
-        }
-        throw contractError;
-      }
-    } catch (error) {
-      console.error('[Transaction] Error initializing transaction:', error);
-      if (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
-        const getNetworkName = (uri) => {
-          if (uri.includes('milkomeda')) return 'Milkomeda';
-          if (uri.includes('mordor')) return 'Mordor';
-          if (uri.includes('sepolia')) return 'Sepolia';
-          return 'the selected network';
-        };
-        const networkName = getNetworkName(this.networkUri);
-        throw new Error(
-          `Failed to connect to ${networkName} RPC endpoint: ${this.networkUri}\n\n` +
-          `Possible causes:\n` +
-          `- The RPC endpoint may be temporarily unavailable\n` +
-          `- DNS resolution issue (check your internet connection)\n` +
-          `- Network firewall blocking the connection\n\n` +
-          `Please try again in a few moments or check the network status.`
-        );
-      }
-      throw error;
-    }
+    const stableCoinAddress = await this.djedContract.read.stableCoin()
+    const reserveCoinAddress = await this.djedContract.read.reserveCoin()
+
+    this.stableCoin = getContract({
+      address: stableCoinAddress,
+      abi: ERC20_ABI,
+      client: this.publicClient
+    })
+
+    this.reserveCoin = getContract({
+      address: reserveCoinAddress,
+      abi: ERC20_ABI,
+      client: this.publicClient
+    })
+
+    this.scDecimals = BigInt(await this.stableCoin.read.decimals())
+    this.rcDecimals = BigInt(await this.reserveCoin.read.decimals())
+
+    this.oracleAddress = await this.djedContract.read.oracle()
   }
 
   getBlockchainDetails() {
     return {
-      web3Available: !!this.web3,
+      clientAvailable: !!this.publicClient,
       djedContractAvailable: !!this.djedContract,
-      stableCoinAddress: this.stableCoin ? this.stableCoin._address : 'N/A',
-      reserveCoinAddress: this.reserveCoin ? this.reserveCoin._address : 'N/A',
-      stableCoinDecimals: this.scDecimals,
-      reserveCoinDecimals: this.rcDecimals,
-      oracleAddress: this.oracleAddress || 'N/A',
-      oracleContractAvailable: !!this.oracleContract,
-    };
+      stableCoinAddress: this.stableCoin?.address || 'N/A',
+      reserveCoinAddress: this.reserveCoin?.address || 'N/A',
+      stableCoinDecimals: Number(this.scDecimals),
+      reserveCoinDecimals: Number(this.rcDecimals),
+      oracleAddress: this.oracleAddress || 'N/A'
+    }
   }
 
   async handleTradeDataBuySc(amountScaled) {
     if (!this.djedContract) {
-      throw new Error("DJED contract is not initialized");
+      throw new Error("DJED contract is not initialized")
     }
+
     if (typeof amountScaled !== 'string') {
-      throw new Error("Amount must be a string");
+      throw new Error("Amount must be a string")
     }
-    try {
-      const result = await tradeDataPriceBuySc(this.djedContract, this.scDecimals, amountScaled);
-      return result.totalBCScaled;
-    } catch (error) {
-      console.error("Error fetching trade data for buying stablecoins: ", error);
-      throw error;
-    }
+
+    const amountUnscaled = BigInt(amountScaled)
+
+    const scPrice = await this.djedContract.read.scPrice([0n])
+    const treasuryFee = await this.djedContract.read.treasuryFee()
+    const fee = await this.djedContract.read.fee()
+
+    const decimalScalingFactor = 10n ** this.scDecimals
+
+    const totalUnscaled =
+      (amountUnscaled * scPrice) / decimalScalingFactor
+
+    const scalingFactor = 10n ** SCALING_DECIMALS
+    const totalFees = treasuryFee + fee
+
+    const appended =
+      (totalUnscaled * scalingFactor) /
+      (scalingFactor - totalFees)
+
+    return appended.toString()
   }
 
-  async buyStablecoins(payer, receiver, value) {
+  async buyStablecoins(payer, receiver, valueWei) {
     if (!this.djedContract) {
-      throw new Error("DJED contract is not initialized");
+      throw new Error("DJED contract is not initialized")
     }
-    try {
-      const UI = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839';
 
-      const txData = await buyScTx(this.djedContract, payer, receiver, value, UI, this.djedAddress);
+    const chain = this.networkUri.includes('sepolia') ? sepolia : mainnet
 
-      return txData;
-    } catch (error) {
-      console.error("Error executing buyStablecoins transaction: ", error);
-      throw error;
-    }
+    const walletClient = createWalletClient({
+      chain,
+      transport: http(this.networkUri),
+      account: payer
+    })
+
+    return await walletClient.writeContract({
+      address: this.djedAddress,
+      abi: DJED_ABI,
+      functionName: 'buyStableCoins',
+      args: [
+        receiver,
+        0n, // feeUI if needed
+        UI_ADDRESS
+      ],
+      value: BigInt(valueWei)
+    })
   }
 }
