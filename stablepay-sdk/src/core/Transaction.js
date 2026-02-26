@@ -1,25 +1,32 @@
-import { createPublicClient, createWalletClient, http } from 'viem'
+import { createPublicClient , http } from 'viem'
 import { getContract } from 'viem'
 import { mainnet, sepolia } from 'viem/chains'
 import DJED_ABI from '../abi/Djed.json'
 import ERC20_ABI from '../abi/ERC20.json'
 
-const BC_DECIMALS = 18n
 const SCALING_DECIMALS = 24n
-const FEE_UI = 1n // 0.01% scaled later
 const UI_ADDRESS = '0x0232556C83791b8291E9b23BfEa7d67405Bd9839'
+
+function resolveChain(networkUri) {
+  if (networkUri.includes('sepolia')) return sepolia
+  if (networkUri.includes('mainnet')) return mainnet
+
+  throw new Error(
+    `Unsupported network URI: ${networkUri}. Please use sepolia or mainnet.`
+  )
+}
 
 export class Transaction {
   constructor(networkUri, djedAddress) {
     this.networkUri = networkUri
     this.djedAddress = djedAddress
+    this.chain = resolveChain(networkUri)
   }
 
   async init() {
-    const chain = this.networkUri.includes('sepolia') ? sepolia : mainnet
 
     this.publicClient = createPublicClient({
-      chain,
+      chain: this.chain,
       transport: http(this.networkUri)
     })
 
@@ -92,18 +99,14 @@ export class Transaction {
     return appended.toString()
   }
 
-  async buyStablecoins(payer, receiver, valueWei) {
+  async buyStablecoins(walletClient, receiver, valueWei) {
     if (!this.djedContract) {
       throw new Error("DJED contract is not initialized")
     }
 
-    const chain = this.networkUri.includes('sepolia') ? sepolia : mainnet
-
-    const walletClient = createWalletClient({
-      chain,
-      transport: http(this.networkUri),
-      account: payer
-    })
+    if (!walletClient) {
+      throw new Error("Wallet client is required")
+    }
 
     return await walletClient.writeContract({
       address: this.djedAddress,
