@@ -7,15 +7,17 @@ export default {
   output: [
     {
       format: 'es',
-      file: 'dist/esm/index.js'
+      file: 'dist/esm/index.js',
+      inlineDynamicImports: true
     },
     {
       format: 'umd',
       name: 'DjedSdk',
       file: 'dist/umd/index.js',
+      inlineDynamicImports: true,
       globals: {
         web3: 'Web3',
-        ethers: 'ethers'
+        ethers: 'ethers',
       }
     },
   ],

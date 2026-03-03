@@ -1,16 +1,21 @@
-import { createPublicClient, createWalletClient, http } from "viem"
-import { mainnet } from "viem/chains"
+import { createPublicClient, createWalletClient, http } from "viem";
+import { mainnet } from "viem/chains";
 
-export const createViemClients = (rpcUrl) => {
-    const publicClient = createPublicClient({
-        chain: mainnet,
-        transport: http(rpcUrl),
-    })
+export const createViemClients = (rpcUrl, account) => {
+  if (!rpcUrl || typeof rpcUrl !== "string" || !rpcUrl.trim()) {
+    throw new Error("createViemClients: rpcUrl is required");
+  }
 
-    const walletClient = createWalletClient({
-        chain: mainnet,
-        transport: http(rpcUrl),
-    })
+  const publicClient = createPublicClient({
+    chain: mainnet,
+    transport: http(rpcUrl),
+  });
 
-    return { publicClient, walletClient }
-}
+  const walletClient = createWalletClient({
+    chain: mainnet,
+    transport: http(rpcUrl),
+    ...(account ? { account } : {}),   
+  });
+
+  return { publicClient, walletClient };
+};
