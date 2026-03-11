@@ -25,16 +25,17 @@ export const NETWORKS = {
   sepolia: {
     name: "Sepolia",
     chainId: 11155111,
-    rpcUrl: "https://sepolia.infura.io/v3/",
-    djedAddress: "0xSEPOLIA_DJED_ADDRESS",
-    oracleAddress: "0xSEPOLIA_ORACLE_ADDRESS"
+    rpcUrl: null, // Developers should provide their RPC endpoint
+    djedAddress: null, // DJED contract address for Sepolia
+    oracleAddress: null // Oracle contract address for Sepolia
   },
+
   mainnet: {
     name: "Ethereum Mainnet",
     chainId: 1,
-    rpcUrl: "https://mainnet.infura.io/v3/",
-    djedAddress: "0xMAINNET_DJED_ADDRESS",
-    oracleAddress: "0xMAINNET_ORACLE_ADDRESS"
+    rpcUrl: null, // Developers should provide their RPC endpoint
+    djedAddress: null, // DJED contract address for Mainnet
+    oracleAddress: null // Oracle contract address for Mainnet
   }
 };
 
