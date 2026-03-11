@@ -1,4 +1,5 @@
 export { getWeb3 } from "./web3";
+
 export {
   calculateBcUsdEquivalent,
   calculateRcUsdEquivalent,
@@ -9,3 +10,5 @@ export {
 
 export * from "./djed/index";
 export * from "./oracle";
+
+export * from "./constants";
