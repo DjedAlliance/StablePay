@@ -38,7 +38,8 @@ export const tradeDataPriceBuyRc = async (djed, rcDecimals, amountScaled) => {
       totalBCUnscaled,
     };
   } catch (error) {
-    console.log("error", error);
+    console.error("tradeDataPriceBuyRc error:", error);
+    throw new Error("Failed to calculate reserve coin buy price");
   }
 };
 
@@ -66,7 +67,8 @@ export const tradeDataPriceSellRc = async (djed, rcDecimals, amountScaled) => {
       totalBCUnscaled: totalBCAmount.toString(),
     };
   } catch (error) {
-    console.log("error", error);
+    console.error("tradeDataPriceSellRc error:", error);
+    throw new Error("Failed to calculate reserve coin sell price");
   }
 };
 

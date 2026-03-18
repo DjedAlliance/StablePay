@@ -38,7 +38,8 @@ export const tradeDataPriceBuySc = async (djed, scDecimals, amountScaled) => {
       totalBCUnscaled,
     };
   } catch (error) {
-    console.log("error", error);
+    console.error("tradeDataPriceBuySc error:", error);
+    throw new Error("Failed to calculate stable coin buy price");
   }
 };
 
@@ -71,7 +72,8 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
       totalBCScaled: decimalScaling(totalBCAmount.toString(), BC_DECIMALS),
     };
   } catch (error) {
-    console.log("error", error);
+    console.error("tradeDataPriceSellSc error:", error);
+    throw new Error("Failed to calculate stable coin sell price");
   }
 };
 
@@ -129,6 +131,7 @@ export const calculateFutureScPrice = async ({
         : futurePrice.toString();
     }
   } catch (error) {
-    console.log("calculateFutureScPrice error ", error);
+    console.error("calculateFutureScPrice error:", error);
+    throw new Error("Failed to calculate future stable coin price");
   }
 };
