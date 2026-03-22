@@ -39,7 +39,7 @@ export const tradeDataPriceBuyRc = async (djed, rcDecimals, amountScaled) => {
     };
   } catch (error) {
     console.error("tradeDataPriceBuyRc error:", error);
-    throw new Error("Failed to calculate reserve coin buy price");
+    throw new Error("Failed to calculate reserve coin buy price", { cause: error });
   }
 };
 
@@ -68,7 +68,7 @@ export const tradeDataPriceSellRc = async (djed, rcDecimals, amountScaled) => {
     };
   } catch (error) {
     console.error("tradeDataPriceSellRc error:", error);
-    throw new Error("Failed to calculate reserve coin sell price");
+    throw new Error("Failed to calculate reserve coin sell price", { cause: error });
   }
 };
 
