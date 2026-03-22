@@ -29,14 +29,13 @@ export const getDecimals = async (stableCoin, reserveCoin) => {
   return { scDecimals, rcDecimals };
 };
 
-const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
-  const adapter = createDjedAdapter(djed);
-  const data = adapter.buyStableCoins(receiver, UI).encodeABI();
+// Adapter should be created once and passed in (dependency injection)
+const buyScTx = (adapter, payer, receiver, value, ui, DJED_ADDRESS) => {
+  const data = adapter.buyStableCoins(receiver, ui).encodeABI();
   return buildTx(payer, DJED_ADDRESS, value, data);
 };
 
-const sellScTx = (djed, account, amount, UI, DJED_ADDRESS) => {
-  const adapter = createDjedAdapter(djed);
-  const data = adapter.sellStableCoins(amount, account, UI).encodeABI();
+const sellScTx = (adapter, account, amount, ui, DJED_ADDRESS) => {
+  const data = adapter.sellStableCoins(amount, account, ui).encodeABI();
   return buildTx(account, DJED_ADDRESS, 0, data);
 };

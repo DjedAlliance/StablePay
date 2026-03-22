@@ -24,10 +24,10 @@ export const createDjedAdapter = (djedContract) => {
   }
 
   return {
-    buyStableCoins: (receiver, UI) =>
-      methods.buyStableCoins(receiver, FEE_UI_UNSCALED, UI),
+    buyStableCoins: (receiver, ui) =>
+      methods.buyStableCoins(receiver, FEE_UI_UNSCALED, ui),
 
-    sellStableCoins: (amount, account, UI) =>
-      methods.sellStableCoins(amount, account, FEE_UI_UNSCALED, UI),
+    sellStableCoins: (amount, account, ui) =>
+      methods.sellStableCoins(amount, account, FEE_UI_UNSCALED, ui),
   };
 };
