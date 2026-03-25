@@ -10,7 +10,10 @@ export const getWeb3 = async (URI) => {
 
       return web3;
     } catch (error) {
-      console.error("User denied account access", error);
+      const msg = error?.code === 4001
+        ? "User denied account access"
+        : "Failed to initialize wallet provider";
+      console.error(msg, error);
       throw error;
     }
   }
