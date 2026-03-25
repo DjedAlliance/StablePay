@@ -16,5 +16,9 @@ export const getWeb3 = async (URI) => {
   }
 
   // Fallback to RPC
+  if (!URI) {
+    throw new Error("No injected provider found and no fallback URI supplied.");
+  }
+  // Fallback to RPC
   return new Web3(new Web3.providers.HttpProvider(URI));
 };
