@@ -4,7 +4,7 @@ export class Config {
   constructor(options = {}) {
     this.receivingAddress = options.receivingAddress || "";
     this.blacklist = options.blacklist || [];
-    this.amounts = options.Amounts || {}; // Note the capital 'A' in Amounts
+    this.amounts = options.amounts || options.Amounts || {};
     this.validateConfig();
   }
 
