@@ -86,6 +86,27 @@ const TransactionReview = ({ onTransactionComplete }) => {
     initializeTransaction();
   }, [selectedNetwork, selectedToken, networkSelector, setTransactionDetails]);
 
+  useEffect(() => {
+   
+    if (!transaction || !selectedToken || selectedToken.key !== "native") return;
+
+    const refreshPrice = async () => {
+      try {
+        const tokenAmount = networkSelector.getTokenAmount(selectedToken.key);
+        if (tokenAmount) {
+          const tradeData = await transaction.handleTradeDataBuySc(String(tokenAmount));
+          setTradeDataBuySc(tradeData);
+        }
+      } catch (refreshError) {
+        console.warn("Failed to refresh price data:", refreshError);
+      }
+    };
+
+    const intervalId = setInterval(refreshPrice, 15000); 
+
+    return () => clearInterval(intervalId);
+  }, [transaction, selectedToken, networkSelector]);
+
   if (!contextTransactionDetails) {
     return <div className={styles.loading}>Initializing transaction...</div>;
   }
