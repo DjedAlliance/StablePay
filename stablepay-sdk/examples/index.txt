@@ -1,1 +1,0 @@
-this folder will contain the testing file and examples of vite project,react project on how to use the stable-pay,sdk
