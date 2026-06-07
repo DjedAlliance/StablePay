@@ -30,7 +30,8 @@ export class Transaction {
       this.oracleAddress = this.oracleContract._address;
       } catch (contractError) {
         console.error('[Transaction] Error fetching contract details:', contractError);
-        if (contractError.message && contractError.message.includes('execution reverted')) {
+        const isReverted = contractError.code === -32000 || contractError.code === 3 || contractError.data;
+        if (isReverted) {
           const getNetworkInfo = (uri) => {
             if (uri.includes('milkomeda')) return { name: 'Milkomeda', chainId: '2001' };
             if (uri.includes('mordor')) return { name: 'Mordor Testnet', chainId: '63' };
@@ -52,7 +53,8 @@ export class Transaction {
       }
     } catch (error) {
       console.error('[Transaction] Error initializing transaction:', error);
-      if (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED'))) {
+      const isConnectionError = error.code === -32603 || error.code === 4001 || error.code === -32005 || (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED')));
+      if (isConnectionError) {
         const getNetworkName = (uri) => {
           if (uri.includes('milkomeda')) return 'Milkomeda';
           if (uri.includes('mordor')) return 'Mordor';

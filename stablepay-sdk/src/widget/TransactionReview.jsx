@@ -26,18 +26,18 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
   const [transaction, setTransaction] = useState(null);
   const [tradeDataBuySc, setTradeDataBuySc] = useState(null);
-  const [txData, setTxData] = useState(null);
   const [message, setMessage] = useState("");
   const [txHash, setTxHash] = useState(null);
   const [error, setError] = useState(null);
   const [isErrorDetailsVisible, setIsErrorDetailsVisible] = useState(false);
+  const [interactionState, setInteractionState] = useState('IDLE');
 
   useEffect(() => {
-    setTxData(null);
     setTradeDataBuySc(null);
     setMessage("");
     setError(null);
     setTxHash(null);
+    setInteractionState('IDLE');
   }, [selectedNetwork, selectedToken]);
 
   useEffect(() => {
@@ -98,19 +98,20 @@ const TransactionReview = ({ onTransactionComplete }) => {
     await connectWallet();
   };
 
-  const handleSendTransaction = async () => {
+  const executePayment = async () => {
     if (!account || !contextTransactionDetails || !transaction) {
       setMessage("Wallet not connected or transaction details missing");
       return;
     }
 
-    try {
-      setTxData(null);
-      setError(null);
-      setMessage("Preparing transaction...");
+    setInteractionState('PROCESSING');
+    setMessage("Preparing transaction...");
+    setError(null);
+    setTxHash(null);
 
+    let builtTx;
+    try {
       const receiver = contextTransactionDetails.receivingAddress;
-      let builtTx;
 
       if (selectedToken.key === "native") {
         const UI = "0x0232556C83791b8291E9b23BfEa7d67405Bd9839";
@@ -166,75 +167,50 @@ const TransactionReview = ({ onTransactionComplete }) => {
           account: account,
         };
       }
-
-      setTxData(builtTx);
-      setMessage("Transaction ready. Please confirm to proceed.");
-    } catch (error) {
-      setError(error);
-      const reason = error.shortMessage || (error.message ? error.message.split('\n')[0] : "Unknown error");
+    } catch (err) {
+      setError(err);
+      const reason = err.shortMessage || (err.message ? err.message.split('\n')[0] : "Unknown error");
       setMessage(`Transaction preparation failed: ${reason}`);
+      setInteractionState('IDLE');
+      return;
     }
-  };
 
-  const handleBuySc = async () => {
-    setError(null);
+    setMessage("Please check your wallet to confirm the transaction...");
     
     try {
-      if (!account || !txData) {
-        setMessage("Wallet account or transaction data is missing");
-        return;
-      }
-
-      if (!selectedNetwork) {
-        setMessage("Network not selected");
-        return;
-      }
-
       const networkConfig = networkSelector.getSelectedNetworkConfig();
       if (!networkConfig) {
-        setMessage("Network configuration not found");
-        return;
+        throw new Error("Network configuration not found");
       }
-
-      setMessage("Verifying network...");
 
       const freshWalletClient = await ensureCorrectNetwork();
       if (!freshWalletClient) {
-        setMessage("Failed to switch to correct network. Please approve the network switch in MetaMask and try again.");
-        return;
+        throw new Error("Failed to switch to correct network. Please approve the network switch in MetaMask.");
       }
 
       if (!window.ethereum) {
-        setMessage("MetaMask not available");
-        return;
+        throw new Error("MetaMask not available");
       }
 
       const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
       const currentChainId = parseInt(chainIdHex, 16);
 
       if (currentChainId !== networkConfig.chainId) {
-        const errorMsg = `Network mismatch. MetaMask is on chain ${currentChainId}, but ${selectedNetwork} requires chain ${networkConfig.chainId}. Please switch networks in MetaMask.`;
-        setMessage(errorMsg);
-        setError(new Error(errorMsg));
-        return;
+        throw new Error(`Network mismatch. MetaMask is on chain ${currentChainId}, but ${selectedNetwork} requires chain ${networkConfig.chainId}. Please switch networks in MetaMask.`);
       }
 
       if (freshWalletClient.chain.id !== networkConfig.chainId) {
-        const errorMsg = `Wallet client chain mismatch. Wallet client is on chain ${freshWalletClient.chain.id}, but expected ${networkConfig.chainId}.`;
-        setMessage(errorMsg);
-        setError(new Error(errorMsg));
-        return;
+        throw new Error(`Wallet client chain mismatch. Wallet client is on chain ${freshWalletClient.chain.id}, but expected ${networkConfig.chainId}.`);
       }
 
-      setMessage("Sending transaction...");
-
       const txHash = await freshWalletClient.sendTransaction({
-        ...txData,
+        ...builtTx,
         account: account,
       });
 
       setTxHash(txHash);
-      setMessage(`Transaction sent!`);
+      setMessage(`Transaction sent successfully!`);
+      setInteractionState('SUCCESS');
       
       if (onTransactionComplete) {
         onTransactionComplete({
@@ -246,11 +222,21 @@ const TransactionReview = ({ onTransactionComplete }) => {
           receivingAddress: contextTransactionDetails?.receivingAddress,
         });
       }
-    } catch (error) {
-      setError(error);
-      const reason = error.shortMessage || (error.message ? error.message.split('\n')[0] : "Unknown error");
+    } catch (err) {
+      setError(err);
+      
+      let reason = "Unknown error";
+      if (err.name === 'UserRejectedRequestError' || err.code === 4001) {
+        reason = "User denied transaction";
+      } else if (err.name === 'ContractFunctionRevertedError' || (err.data && err.data.message)) {
+        reason = err.shortMessage || err.data?.message || err.message;
+      } else {
+        reason = err.shortMessage || (err.message ? err.message.split('\n')[0] : "Transaction failed");
+      }
+      
       setMessage(`Transaction failed: ${reason}`);
-      console.error('Transaction error:', error);
+      setInteractionState('IDLE');
+      console.error('Transaction error:', err);
     }
   };
 
@@ -326,29 +312,41 @@ const TransactionReview = ({ onTransactionComplete }) => {
         </div>
       )}
 
-      <div className={styles.walletButtonContainer}>
-        {!account && (
-          <button className={styles.walletButton} onClick={handleConnectWallet} disabled={isConnecting}>
-            {isConnecting ? "Connecting..." : "Connect Wallet"}
-          </button>
-        )}
+      {interactionState !== 'SUCCESS' && (
+        <div className={styles.walletButtonContainer}>
+          {!account && (
+            <button className={styles.walletButton} onClick={handleConnectWallet} disabled={isConnecting}>
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
+            </button>
+          )}
 
-        {account && !txData && (
-          <button className={styles.walletButton} onClick={handleSendTransaction}>
-            Prepare Transaction
-          </button>
-        )}
-        
-        {account && txData && (
-          <button 
-            className={styles.walletButton} 
-            onClick={handleBuySc} 
-            disabled={txHash !== null} // Disable the button when txHash is set
-          >
-            Send Transaction
-          </button>
-        )}
-      </div>
+          {account && interactionState === 'IDLE' && (
+            <button className={styles.walletButton} onClick={() => setInteractionState('CONFIRMING')}>
+              Pay {contextTransactionDetails.amount} {contextTransactionDetails.tokenSymbol}
+            </button>
+          )}
+
+          {account && interactionState === 'CONFIRMING' && (
+            <div className={styles.confirmContainer}>
+              <span className={styles.confirmText}>Confirm payment?</span>
+              <div className={styles.confirmButtons}>
+                <button className={styles.secondaryButton} onClick={() => setInteractionState('IDLE')}>
+                  No
+                </button>
+                <button className={`${styles.walletButton} ${styles.primaryButton}`} onClick={executePayment}>
+                  Yes, Pay
+                </button>
+              </div>
+            </div>
+          )}
+
+          {account && interactionState === 'PROCESSING' && (
+            <button className={styles.walletButton} disabled>
+              Processing...
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
