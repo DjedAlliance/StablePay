@@ -86,6 +86,10 @@ const TransactionReview = ({ onTransactionComplete }) => {
     initializeTransaction();
   }, [selectedNetwork, selectedToken, networkSelector, setTransactionDetails]);
 
+  if (!selectedNetwork || !selectedToken) {
+    return null;
+  }
+
   if (!contextTransactionDetails) {
     return <div className={styles.loading}>Initializing transaction...</div>;
   }
@@ -96,14 +100,14 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
   const handleSendTransaction = async () => {
     if (!account || !contextTransactionDetails || !transaction) {
-      setMessage("❌ Wallet not connected or transaction details missing");
+      setMessage("Wallet not connected or transaction details missing");
       return;
     }
 
     try {
       setTxData(null);
       setError(null);
-      setMessage("⏳ Preparing transaction...");
+      setMessage("Preparing transaction...");
 
       const receiver = contextTransactionDetails.receivingAddress;
       let builtTx;
@@ -164,10 +168,11 @@ const TransactionReview = ({ onTransactionComplete }) => {
       }
 
       setTxData(builtTx);
-      setMessage("✅ Transaction ready! Click 'Send Transaction' to proceed.");
+      setMessage("Transaction ready. Please confirm to proceed.");
     } catch (error) {
       setError(error);
-      setMessage(`❌ Transaction preparation failed.`);
+      const reason = error.shortMessage || (error.message ? error.message.split('\n')[0] : "Unknown error");
+      setMessage(`Transaction preparation failed: ${reason}`);
     }
   };
 
@@ -176,31 +181,31 @@ const TransactionReview = ({ onTransactionComplete }) => {
     
     try {
       if (!account || !txData) {
-        setMessage("❌ Wallet account or transaction data is missing");
+        setMessage("Wallet account or transaction data is missing");
         return;
       }
 
       if (!selectedNetwork) {
-        setMessage("❌ Network not selected");
+        setMessage("Network not selected");
         return;
       }
 
       const networkConfig = networkSelector.getSelectedNetworkConfig();
       if (!networkConfig) {
-        setMessage("❌ Network configuration not found");
+        setMessage("Network configuration not found");
         return;
       }
 
-      setMessage("⏳ Verifying network...");
+      setMessage("Verifying network...");
 
       const freshWalletClient = await ensureCorrectNetwork();
       if (!freshWalletClient) {
-        setMessage("❌ Failed to switch to correct network. Please approve the network switch in MetaMask and try again.");
+        setMessage("Failed to switch to correct network. Please approve the network switch in MetaMask and try again.");
         return;
       }
 
       if (!window.ethereum) {
-        setMessage("❌ MetaMask not available");
+        setMessage("MetaMask not available");
         return;
       }
 
@@ -209,19 +214,19 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
       if (currentChainId !== networkConfig.chainId) {
         const errorMsg = `Network mismatch. MetaMask is on chain ${currentChainId}, but ${selectedNetwork} requires chain ${networkConfig.chainId}. Please switch networks in MetaMask.`;
-        setMessage(`❌ ${errorMsg}`);
+        setMessage(errorMsg);
         setError(new Error(errorMsg));
         return;
       }
 
       if (freshWalletClient.chain.id !== networkConfig.chainId) {
         const errorMsg = `Wallet client chain mismatch. Wallet client is on chain ${freshWalletClient.chain.id}, but expected ${networkConfig.chainId}.`;
-        setMessage(`❌ ${errorMsg}`);
+        setMessage(errorMsg);
         setError(new Error(errorMsg));
         return;
       }
 
-      setMessage("⏳ Sending transaction...");
+      setMessage("Sending transaction...");
 
       const txHash = await freshWalletClient.sendTransaction({
         ...txData,
@@ -229,7 +234,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
       });
 
       setTxHash(txHash);
-      setMessage(`✅ Transaction sent!`);
+      setMessage(`Transaction sent!`);
       
       if (onTransactionComplete) {
         onTransactionComplete({
@@ -243,7 +248,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
       }
     } catch (error) {
       setError(error);
-      setMessage(`❌ Transaction failed.`);
+      const reason = error.shortMessage || (error.message ? error.message.split('\n')[0] : "Unknown error");
+      setMessage(`Transaction failed: ${reason}`);
       console.error('Transaction error:', error);
     }
   };
@@ -271,7 +277,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
       <div className={styles.transactionInfo}>
         <span className={styles.transactionLabel}>You Pay:</span>
-        <span className={styles.transactionValue}>
+        <span className={`${styles.transactionValue} ${styles.highlight}`}>
           {selectedToken.key === "stablecoin"
             ? `${contextTransactionDetails.amount} ${contextTransactionDetails.tokenSymbol}`
             : `${tradeDataBuySc ? tradeDataBuySc : "Calculating..."} ${
@@ -280,28 +286,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
         </span>
       </div>
 
-      <button className={styles.walletButton} onClick={handleConnectWallet} disabled={isConnecting}>
-        {isConnecting ? "Connecting..." : "Connect Wallet"}
-      </button>
-
-      {account && !txData && (
-        <button className={styles.walletButton} onClick={handleSendTransaction}>
-          Prepare Transaction
-        </button>
-      )}
-      {account && txData && (
-  <button 
-    className={styles.walletButton} 
-    onClick={handleBuySc} 
-    disabled={txHash !== null} // Disable the button when txHash is set
-  >
-    Send Transaction
-  </button>
-)}
-
-
       {message && (
-        <div className="message-box">
+        <div className={styles.messageBox}>
           {message}
           {error && (
             <button
@@ -320,34 +306,49 @@ const TransactionReview = ({ onTransactionComplete }) => {
         </div>
       )}
 
-      
       {txHash && (
-  <div className={styles.transactionLink}>
-    ✅ Transaction Hash:{" "}
+        <div className={styles.transactionLink}>
+          Transaction Hash:{" "}
           {getExplorerUrl() ? (
-    <a
+            <a
               href={getExplorerUrl()}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={styles.explorerLink}
-      style={{ 
-        color: "#007bff", 
-        textDecoration: "underline", 
-        fontWeight: "bold", 
-        cursor: "pointer",
-        wordBreak: "break-word" 
-      }}
-    >
-      {txHash.slice(0, 6)}...{txHash.slice(-6)}
-    </a>
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.explorerLink}
+            >
+              {txHash.slice(0, 6)}...{txHash.slice(-6)}
+            </a>
           ) : (
             <span style={{ wordBreak: "break-word" }}>
               {txHash}
             </span>
           )}
-  </div>
-)}
+        </div>
+      )}
 
+      <div className={styles.walletButtonContainer}>
+        {!account && (
+          <button className={styles.walletButton} onClick={handleConnectWallet} disabled={isConnecting}>
+            {isConnecting ? "Connecting..." : "Connect Wallet"}
+          </button>
+        )}
+
+        {account && !txData && (
+          <button className={styles.walletButton} onClick={handleSendTransaction}>
+            Prepare Transaction
+          </button>
+        )}
+        
+        {account && txData && (
+          <button 
+            className={styles.walletButton} 
+            onClick={handleBuySc} 
+            disabled={txHash !== null} // Disable the button when txHash is set
+          >
+            Send Transaction
+          </button>
+        )}
+      </div>
     </div>
   );
 };

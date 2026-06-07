@@ -10,7 +10,7 @@ const Dialog = ({ children, onClose, size = 'medium' }) => {
         <div className={styles.pricingCardHeader}>
         <div className={styles.allianceLogo}></div>
 
-          <h2 className={styles.stablepayTitle}>StablePay</h2>
+          <div className={styles.stablepayTitle}>StablePay</div>
         </div>
         <div className={styles.pricingCardBody}>
           {children}

@@ -1,68 +1,96 @@
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .dialogOverlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: fadeInScale 0.2s ease-out;
 }
 
 .pricingCard {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 24px;
-  background: #2c2c2c;
-  border: 1px solid rgba(217, 217, 217, 0.1);
-  border-radius: 8px;
+  padding: 32px;
+  background: #242529;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
   position: relative;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .pricingCard.small {
   width: 360px;
-  height: 600px;
+  min-height: 520px;
 }
 
 .pricingCard.medium {
   width: 400px;
-  height: 680px;
+  min-height: 580px;
 }
 
 .pricingCard.large {
   width: 440px;
-  height: 760px;
+  min-height: 640px;
 }
 
 .dialogClose {
   position: absolute;
-  right: 16px;
-  top: 16px;
-  background: none;
+  right: 20px;
+  top: 20px;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  color: #ffffff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #a0aec0;
   font-size: 20px;
   cursor: pointer;
   z-index: 5;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0 0 3px 0; /* Optical adjustment to center the 'x' vertically */
+}
+
+.dialogClose:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 .pricingCardHeader {
   display: flex;
   align-items: center;
   width: 100%;
-  margin-bottom: 40px;
-  gap: 12px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 16px;
 }
 
 .allianceLogo {
-  width: 55px;
-  height: 55px;
+  width: 48px;
+  height: 48px;
   background-image: url("../assets/stablepay-logo.svg");
   background-position: center;
   background-size: contain;
@@ -72,70 +100,88 @@
 .stablepayTitle {
   font-family: "Inter", sans-serif;
   font-style: normal;
-  font-weight: 600;
-  font-size: 29.2px;
-  line-height: 35px;
+  font-weight: 700;
+  font-size: 26px;
   color: #f6941c;
   display: flex;
   align-items: center;
+  letter-spacing: -0.5px;
 }
 
 .pricingCardBody {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  flex: 1;
 }
 
 .selectField {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  margin-bottom: 30px;
-  align-items: flex-start; /* Added this line */
+  margin-bottom: 24px;
 }
 
 .selectField label {
   font-family: "Inter", sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 16px;
-  line-height: 19px;
-  color: #636a77;
-  margin-bottom: 6px;
-  align-self: flex-start; /* Added this line */
-  text-align: left; /* Added this line */
-  width: 100%; /* Added this line */
+  font-size: 14px;
+  color: #a0aec0;
+  align-self: flex-start;
+  text-align: left;
+  width: 100%;
 }
 
 .selectField select {
   box-sizing: border-box;
   width: 100%;
-  height: 49px;
-  padding: 10px 14px;
-  background: #ffffff;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  height: 52px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   font-family: "Inter", sans-serif;
   font-style: normal;
   font-weight: 500;
   font-size: 16px;
-  line-height: 19px;
-  color: #000000;
+  color: #ffffff;
   appearance: none;
   background-image: url("../assets/chevron-down-icon.svg");
   background-repeat: no-repeat;
   background-position: right 18px center;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
+
+.selectField select:hover:not(:disabled) {
+  border-color: rgba(246, 148, 28, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.selectField select:focus {
+  outline: none;
+  border-color: #f6941c;
+  box-shadow: 0 0 0 3px rgba(246, 148, 28, 0.2);
+}
+
 .selectField select:disabled {
-  background-color: #f5f5f5;
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+.selectField select option {
+  background: #242529;
+  color: #ffffff;
 }
 
 .transactionReview {
   width: 100%;
-  padding: 20px 0;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .transactionInfo {
@@ -143,219 +189,213 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin: 15px 0;
-  padding: 0 5px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .transactionLabel {
   font-family: "Inter", sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 16px;
-  line-height: 19px;
-  color: #636a77;
+  font-size: 15px;
+  color: #a0aec0;
 }
 
 .transactionValue {
   font-family: "Inter", sans-serif;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 16px;
-  line-height: 19px;
   color: #ffffff;
   text-align: right;
 }
 
-.infoSection {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 0 26px;
-  margin-top: 20px;
-  margin-bottom: 40px;
+.transactionValue.highlight {
+  color: #f6941c;
+  font-size: 18px;
 }
 
-.infoIcon {
-  width: 22px;
-  height: 21px;
-  min-width: 22px;
-  background: #d5d6d9;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 13px;
-  color: #434a58;
-}
-
-.infoText {
-  font-family: "Inter", sans-serif;
-  font-style: normal;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 17px;
-  color: #636a77;
+.walletButtonContainer {
+  margin-top: auto;
+  padding-top: 24px;
 }
 
 .walletButton {
-  width: calc(100% - 60px);
-  height: 65px;
-  position: absolute;
-  bottom: 31px;
-  left: 30px;
-  background: #f6941c;
-  border: 1px solid #c66c20;
-  border-radius: 0;
+  width: 100%;
+  height: 56px;
+  background: linear-gradient(135deg, #f6941c 0%, #d87c12 100%);
+  border: none;
+  border-radius: 14px;
   font-family: "Inter", sans-serif;
   font-style: normal;
   font-weight: 600;
-  font-size: 18px;
-  line-height: 22px;
-  color: #fde5cb;
+  font-size: 17px;
+  color: #ffffff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(246, 148, 28, 0.3);
+}
+
+.walletButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(246, 148, 28, 0.4);
+}
+
+.walletButton:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .walletButton:disabled {
-  background: #cccccc;
-  border-color: #bbbbbb;
+  background: rgba(255, 255, 255, 0.1);
+  color: #636a77;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
 .loading {
   text-align: center;
-  color: #636a77;
+  color: #a0aec0;
   font-family: "Inter", sans-serif;
-  padding: 20px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
 .error {
   color: #ff4d4f;
+  text-align: left;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.messageBox {
+  margin-bottom: 16px;
+  padding: 8px 0;
+  font-family: "Inter", sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #e2e8f0;
   text-align: center;
-  padding: 10px;
-  font-family: "Inter", sans-serif;
-}
-
-.networkError {
-  margin: 10px 0;
-  padding: 10px;
-  background: rgba(255, 77, 79, 0.1);
-  border: 1px solid rgba(255, 77, 79, 0.2);
-  border-radius: 4px;
-}
-
-.errorText {
-  color: #ff4d4f;
-  font-family: "Inter", sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.message-box {
-  margin-top: 20px;
-  padding: 10px;
-  border-radius: 4px;
-  font-family: "Inter", sans-serif;
-  font-size: 14px;
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.1);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .detailsButton {
   background: none;
   border: none;
   color: #f6941c;
-  text-decoration: underline;
+  text-decoration: none;
   cursor: pointer;
-  font-size: 12px;
-  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  margin-top: 4px;
+}
+
+.detailsButton:hover {
+  text-decoration: underline;
 }
 
 .errorDetails {
   margin-top: 10px;
-  padding: 10px;
+  padding: 12px;
   background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  color: #ff4d4f;
+  border-radius: 8px;
+  color: #fc8181;
   font-family: monospace;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.5;
   white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: break-word;
-  max-width: 100%;
+  word-break: break-all;
   max-height: 150px;
-  overflow: auto;
-  border: 1px solid rgba(255, 77, 79, 0.3);
+  overflow-y: auto;
+  border-left: 3px solid #ff4d4f;
+  text-align: left;
 }
 
-.errorDetails::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.transactionLink {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.2);
+  border-radius: 12px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  color: #ffffff;
+  text-align: center;
 }
 
-.errorDetails::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 3px;
+.explorerLink {
+  color: #f6941c;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
 }
 
-.errorDetails::-webkit-scrollbar-thumb {
-  background: rgba(255, 77, 79, 0.5);
-  border-radius: 3px;
+.explorerLink:hover {
+  color: #ffad42;
+  text-decoration: underline;
 }
 
-.errorDetails::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 77, 79, 0.7);
+/* Base button styles for PayButton */
+.stablePayButton {
+  background: linear-gradient(135deg, #f6941c 0%, #d87c12 100%);
+  border: none;
+  border-radius: 16px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(246, 148, 28, 0.3);
+}
+
+.stablePayButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(246, 148, 28, 0.4);
+}
+
+.stablePayButton:active {
+  transform: translateY(0);
+}
+
+.buttonText {
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
 }
 
 /* Responsive styles */
 @media (max-width: 520px) {
   .pricingCard {
-    width: 95vw;
-    height: auto;
-    min-height: 600px;
-    padding: 20px;
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    border-radius: 0;
+    padding: 24px;
+    border: none;
   }
 
-  .selectField {
-    margin-bottom: 20px;
+  .dialogOverlay {
+    background-color: #242529;
+    align-items: flex-start;
   }
-
-  .walletButton {
-    width: calc(100% - 40px);
-    left: 20px;
-    position: relative;
-    margin-top: 20px;
-  }
-
-  .infoSection {
-    padding: 0 20px;
-  }
-
-  .loadingContainer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-  
-  .spinner {
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid #ffffff;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 0.8s linear infinite;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
 }
