@@ -1,22 +1,7 @@
-import { useState } from 'react';
 import StablePay from 'stablepay-sdk';
 import './App.css';
 
 function App() {
-  const [account, setAccount] = useState('');
-
-  const connectWallet = async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        setAccount(accounts[0]);
-      } catch (err) {
-        console.error("User denied account access", err);
-      }
-    } else {
-      alert("Please install MetaMask to connect your wallet.");
-    }
-  };
 
   // Configure merchant for a $5 demo payment
   const merchantConfig = new StablePay.Config({
@@ -30,19 +15,14 @@ function App() {
 
   const networkSelector = new StablePay.NetworkSelector(merchantConfig);
 
-  const handleTransactionComplete = (hash) => {
-    alert(`Payment Successful! Transaction Hash: ${hash}`);
+  const handleTransactionComplete = ({ txHash, network, tokenSymbol, amount }) => {
+    alert(`Payment Successful!\nTransaction Hash: ${txHash}\nNetwork: ${network}\nAmount: ${amount} ${tokenSymbol}`);
   };
 
   return (
     <div className="app-container">
       <header className="header">
         <div className="logo">Demo Shop</div>
-        <button className="connect-wallet-btn" onClick={connectWallet}>
-          {account 
-            ? `${account.substring(0, 6)}...${account.substring(account.length - 4)}` 
-            : 'Connect Wallet'}
-        </button>
       </header>
 
       <main className="main-content">
