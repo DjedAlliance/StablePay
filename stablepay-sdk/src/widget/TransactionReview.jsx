@@ -91,6 +91,23 @@ const TransactionReview = ({ onTransactionComplete }) => {
   }
 
   if (!contextTransactionDetails) {
+    if (typeof window !== 'undefined' && !window.ethereum) {
+      return (
+        <div className={styles.transactionReview}>
+          <div className={styles.messageBox} style={{ textAlign: 'center', marginBottom: '1rem', color: '#ff4d4f' }}>
+            No wallet found.
+          </div>
+          <div className={styles.walletButtonContainer}>
+            <button 
+              className={styles.walletButton} 
+              onClick={() => window.open('https://metamask.io/download/', '_blank')}
+            >
+              Connect Wallet
+            </button>
+          </div>
+        </div>
+      );
+    }
     return <div className={styles.loading}>Initializing transaction...</div>;
   }
 
