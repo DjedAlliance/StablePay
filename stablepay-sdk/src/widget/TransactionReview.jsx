@@ -338,23 +338,9 @@ const TransactionReview = ({ onTransactionComplete }) => {
           )}
 
           {account && interactionState === 'IDLE' && (
-            <button className={styles.walletButton} onClick={() => setInteractionState('CONFIRMING')}>
+            <button className={styles.walletButton} onClick={executePayment}>
               Pay {contextTransactionDetails.amount} {contextTransactionDetails.tokenSymbol}
             </button>
-          )}
-
-          {account && interactionState === 'CONFIRMING' && (
-            <div className={styles.confirmContainer}>
-              <span className={styles.confirmText}>Confirm payment?</span>
-              <div className={styles.confirmButtons}>
-                <button className={styles.secondaryButton} onClick={() => setInteractionState('IDLE')}>
-                  No
-                </button>
-                <button className={`${styles.walletButton} ${styles.primaryButton}`} onClick={executePayment}>
-                  Yes, Pay
-                </button>
-              </div>
-            </div>
           )}
 
           {account && interactionState === 'PROCESSING' && (

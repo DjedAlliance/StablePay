@@ -1,11 +1,11 @@
 @keyframes fadeInScale {
   0% {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.95) translateY(10px);
   }
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
 }
 
@@ -15,26 +15,29 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(26, 31, 54, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  animation: fadeInScale 0.2s ease-out;
+  animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: light;
 }
 
 .pricingCard {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding: 32px;
-  background: #242529;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  padding: 36px 32px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 24px;
   position: relative;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 50px 100px -20px rgba(50, 50, 93, 0.25), 0 30px 60px -30px rgba(0, 0, 0, 0.3), inset 0 -2px 6px 0 rgba(10, 37, 64, 0.04);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: light;
 }
 
 .pricingCard.small {
@@ -56,35 +59,36 @@
   position: absolute;
   right: 20px;
   top: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
+  background: #f7f9fc;
+  border: 1px solid #e6ebf1;
   border-radius: 50%;
   width: 32px;
   height: 32px;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #a0aec0;
-  font-size: 20px;
+  color: #697386;
+  font-size: 18px;
   cursor: pointer;
   z-index: 5;
   transition: all 0.2s ease;
   line-height: 1;
-  padding: 0 0 3px 0; /* Optical adjustment to center the 'x' vertically */
+  padding: 0 0 3px 0;
 }
 
 .dialogClose:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: #e6ebf1;
+  color: #1a1f36;
+  transform: scale(1.05);
 }
 
 .pricingCardHeader {
   display: flex;
   align-items: center;
   width: 100%;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e6ebf1;
   gap: 16px;
 }
 
@@ -95,6 +99,8 @@
   background-position: center;
   background-size: contain;
   background-repeat: no-repeat;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .stablepayTitle {
@@ -102,7 +108,7 @@
   font-style: normal;
   font-weight: 700;
   font-size: 26px;
-  color: #f6941c;
+  color: #1a1f36;
   display: flex;
   align-items: center;
   letter-spacing: -0.5px;
@@ -118,7 +124,7 @@
 .selectField {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   margin-bottom: 24px;
 }
@@ -126,9 +132,9 @@
 .selectField label {
   font-family: "Inter", sans-serif;
   font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
-  color: #a0aec0;
+  color: #4f566b;
   align-self: flex-start;
   text-align: left;
   width: 100%;
@@ -137,48 +143,52 @@
 .selectField select {
   box-sizing: border-box;
   width: 100%;
-  height: 52px;
+  height: 48px;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #e6ebf1;
   border-radius: 12px;
   font-family: "Inter", sans-serif;
   font-style: normal;
   font-weight: 500;
   font-size: 16px;
-  color: #ffffff;
+  color: #1a1f36;
   appearance: none;
-  background-image: url("../assets/chevron-down-icon.svg");
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23697386%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
   background-repeat: no-repeat;
-  background-position: right 18px center;
+  background-size: 12px auto;
+  background-position: right 16px center;
   transition: all 0.2s ease;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  color-scheme: light;
 }
 
 .selectField select:hover:not(:disabled) {
-  border-color: rgba(246, 148, 28, 0.5);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: #cfd7df;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
 }
 
 .selectField select:focus {
   outline: none;
   border-color: #f6941c;
-  box-shadow: 0 0 0 3px rgba(246, 148, 28, 0.2);
+  box-shadow: 0 0 0 3px rgba(246, 148, 28, 0.2), 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .selectField select:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
+  background: #f7f9fc;
   cursor: not-allowed;
 }
 
 .selectField select option {
-  background: #242529;
-  color: #ffffff;
+  background: #ffffff;
+  color: #1a1f36;
 }
 
 .transactionReview {
   width: 100%;
-  padding-top: 10px;
+  padding-top: 8px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -189,71 +199,74 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-bottom: 16px;
-  padding: 14px 18px;
-  background: rgba(0, 0, 0, 0.2);
+  margin-bottom: 12px;
+  padding: 16px;
+  background: #f7f9fc;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e6ebf1;
 }
 
 .transactionLabel {
   font-family: "Inter", sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 15px;
-  color: #a0aec0;
+  font-size: 14px;
+  color: #697386;
 }
 
 .transactionValue {
   font-family: "Inter", sans-serif;
   font-style: normal;
-  font-weight: 700;
-  font-size: 16px;
-  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  color: #1a1f36;
   text-align: right;
 }
 
 .transactionValue.highlight {
   color: #f6941c;
   font-size: 18px;
+  font-weight: 700;
 }
 
 .walletButtonContainer {
   margin-top: auto;
-  padding-top: 24px;
+  padding-top: 32px;
 }
 
 .walletButton {
   width: 100%;
-  height: 56px;
-  background: linear-gradient(135deg, #f6941c 0%, #d87c12 100%);
+  height: 52px;
+  background: #f6941c;
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   font-family: "Inter", sans-serif;
   font-style: normal;
   font-weight: 600;
-  font-size: 17px;
+  font-size: 16px;
   color: #ffffff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(246, 148, 28, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 6px rgba(246, 148, 28, 0.2), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .walletButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(246, 148, 28, 0.4);
+  background: #fa9c2a;
+  box-shadow: 0 7px 14px rgba(246, 148, 28, 0.25), 0 3px 6px rgba(0, 0, 0, 0.1);
 }
 
 .walletButton:active:not(:disabled) {
   transform: translateY(0);
+  box-shadow: 0 4px 6px rgba(246, 148, 28, 0.2), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .walletButton:disabled {
-  background: rgba(255, 255, 255, 0.1);
-  color: #636a77;
+  background: #e6ebf1;
+  color: #a3acb9;
   box-shadow: none;
   cursor: not-allowed;
 }
@@ -267,9 +280,10 @@
 
 .confirmText {
   font-family: "Inter", sans-serif;
-  color: #a0aec0;
+  color: #4f566b;
   margin-bottom: 12px;
   font-size: 15px;
+  font-weight: 500;
 }
 
 .confirmButtons {
@@ -280,20 +294,29 @@
 
 .secondaryButton {
   flex: 1;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  height: 52px;
+  background: #ffffff;
+  border: 1px solid #e6ebf1;
+  border-radius: 12px;
   font-family: "Inter", sans-serif;
   font-weight: 600;
-  font-size: 17px;
-  color: #ffffff;
+  font-size: 16px;
+  color: #1a1f36;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .secondaryButton:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f7f9fc;
+  border-color: #cfd7df;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.secondaryButton:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .primaryButton {
@@ -302,30 +325,35 @@
 
 .loading {
   text-align: center;
-  color: #a0aec0;
+  color: #697386;
   font-family: "Inter", sans-serif;
   padding: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  font-weight: 500;
 }
 
 .error {
-  color: #ff4d4f;
+  color: #df1b41;
   text-align: left;
   font-family: "Inter", sans-serif;
-  font-size: 14px;
-  margin-top: 4px;
+  font-size: 13px;
+  margin-top: 6px;
+  font-weight: 500;
 }
 
 .messageBox {
   margin-bottom: 16px;
-  padding: 8px 0;
+  padding: 10px 14px;
+  background: #fff5f5;
+  border: 1px solid #ffdce0;
+  border-radius: 10px;
   font-family: "Inter", sans-serif;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
-  color: #e2e8f0;
+  color: #df1b41;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -342,82 +370,85 @@
 .detailsButton {
   background: none;
   border: none;
-  color: #f6941c;
-  text-decoration: none;
+  color: #697386;
+  text-decoration: underline;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 0;
   margin-top: 4px;
+  transition: color 0.2s;
 }
 
 .detailsButton:hover {
-  text-decoration: underline;
+  color: #1a1f36;
 }
 
 .errorDetails {
-  margin-top: 10px;
-  padding: 12px;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  color: #fc8181;
-  font-family: monospace;
-  font-size: 11px;
+  margin-top: 12px;
+  padding: 14px;
+  background-color: #f7f9fc;
+  border: 1px solid #e6ebf1;
+  border-radius: 10px;
+  color: #4f566b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 150px;
+  max-height: 160px;
   overflow-y: auto;
-  border-left: 3px solid #ff4d4f;
   text-align: left;
 }
 
 .transactionLink {
-  margin-top: 20px;
+  margin-top: 24px;
   padding: 16px;
-  background: rgba(40, 167, 69, 0.1);
-  border: 1px solid rgba(40, 167, 69, 0.2);
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
   border-radius: 12px;
   font-family: "Inter", sans-serif;
   font-size: 14px;
-  color: #ffffff;
+  font-weight: 500;
+  color: #166534;
   text-align: center;
 }
 
 .explorerLink {
-  color: #f6941c;
-  text-decoration: none;
+  color: #15803d;
+  text-decoration: underline;
   font-weight: 600;
   transition: color 0.2s ease;
 }
 
 .explorerLink:hover {
-  color: #ffad42;
-  text-decoration: underline;
+  color: #14532d;
 }
 
 /* Base button styles for PayButton */
 .stablePayButton {
-  background: linear-gradient(135deg, #f6941c 0%, #d87c12 100%);
-  border: none;
-  border-radius: 16px;
-  color: white;
+  background: #ffffff;
+  border: 1px solid #e6ebf1;
+  border-radius: 12px;
+  color: #1a1f36;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(246, 148, 28, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .stablePayButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(246, 148, 28, 0.4);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  border-color: #cfd7df;
 }
 
 .stablePayButton:active {
   transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .buttonText {
@@ -434,10 +465,11 @@
     border-radius: 0;
     padding: 24px;
     border: none;
+    box-shadow: none;
   }
 
   .dialogOverlay {
-    background-color: #242529;
+    background-color: #ffffff;
     align-items: flex-start;
   }
 }
