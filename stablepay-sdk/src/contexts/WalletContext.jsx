@@ -170,9 +170,13 @@ export const WalletProvider = ({ children }) => {
         });
       } catch (permError) {
         if (permError.code === 4001) {
-          throw new Error('User rejected the request to connect wallet.');
+          throw permError;
         } else if (permError.code === -32002) {
-          throw new Error('A connection request is already pending. Please open the MetaMask extension to login.');
+          throw permError;
+        } else if (permError.code === -32601) {
+          // wallet_requestPermissions not supported by this wallet, fall through to eth_requestAccounts
+        } else {
+          throw permError;
         }
       }
 

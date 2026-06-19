@@ -30,11 +30,11 @@ export class Transaction {
       this.oracleAddress = this.oracleContract._address;
       } catch (contractError) {
         console.error('[Transaction] Error fetching contract details:', contractError);
+        const message = contractError?.data?.message || contractError?.shortMessage || contractError?.message;
         const isReverted = 
-          contractError?.code === -32000 ||
           contractError?.code === 3 ||
           contractError?.name === 'ContractFunctionRevertedError' ||
-          typeof contractError?.data?.message === 'string';
+          /\brevert(ed)?\b|execution reverted/i.test(String(message));
         if (isReverted) {
           const getNetworkInfo = (uri) => {
             if (uri.includes('milkomeda')) return { name: 'Milkomeda', chainId: '2001' };
