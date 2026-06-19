@@ -148,19 +148,34 @@ export const WalletProvider = ({ children }) => {
 
   const connectWallet = useCallback(async () => {
     if (!window.ethereum) {
-      setError('Please install MetaMask or another Web3 wallet');
-      return false;
+      const err = new Error('Please install MetaMask or another Web3 wallet');
+      setError(err.message);
+      throw err;
     }
 
     if (!selectedNetwork || !selectedChain) {
-      setError('Please select a network first');
-      return false;
+      const err = new Error('Please select a network first');
+      setError(err.message);
+      throw err;
     }
 
     setIsConnecting(true);
     setError(null);
 
     try {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_requestPermissions',
+          params: [{ eth_accounts: {} }],
+        });
+      } catch (permError) {
+        if (permError.code === 4001) {
+          throw new Error('User rejected the request to connect wallet.');
+        } else if (permError.code === -32002) {
+          throw new Error('A connection request is already pending. Please open the MetaMask extension to login.');
+        }
+      }
+
       const accounts = await window.ethereum.request({ 
         method: 'eth_requestAccounts' 
       });
@@ -204,7 +219,7 @@ export const WalletProvider = ({ children }) => {
     } catch (err) {
       console.error('Error connecting wallet:', err);
       setError(err.message);
-      return false;
+      throw err;
     } finally {
       setIsConnecting(false);
     }

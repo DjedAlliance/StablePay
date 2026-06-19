@@ -112,7 +112,14 @@ const TransactionReview = ({ onTransactionComplete }) => {
   }
 
   const handleConnectWallet = async () => {
-    await connectWallet();
+    setMessage("");
+    setError(null);
+    try {
+      await connectWallet();
+    } catch (err) {
+      setMessage(err.message || "Failed to connect wallet. Please open MetaMask to login.");
+      setError(err);
+    }
   };
 
   const executePayment = async () => {
@@ -125,6 +132,17 @@ const TransactionReview = ({ onTransactionComplete }) => {
     setMessage("Preparing transaction...");
     setError(null);
     setTxHash(null);
+
+    try {
+      if (window.ethereum) {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+      }
+    } catch (err) {
+      setError(err);
+      setMessage("Failed to access wallet. Please unlock MetaMask.");
+      setInteractionState('IDLE');
+      return;
+    }
 
     let builtTx;
     try {
@@ -186,7 +204,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
       }
     } catch (err) {
       setError(err);
-      const reason = err.shortMessage || (err.message ? err.message.split('\n')[0] : "Unknown error");
+      const reason = err.shortMessage || err.message || "Unknown error";
       setMessage(`Transaction preparation failed: ${reason}`);
       setInteractionState('IDLE');
       return;
@@ -226,18 +244,26 @@ const TransactionReview = ({ onTransactionComplete }) => {
       });
 
       setTxHash(txHash);
-      setMessage(`Transaction sent successfully!`);
-      setInteractionState('SUCCESS');
-      
-      if (onTransactionComplete) {
-        onTransactionComplete({
-          txHash,
-          network: selectedNetwork,
-          token: selectedToken?.key,
-          tokenSymbol: selectedToken?.symbol,
-          amount: contextTransactionDetails?.amount,
-          receivingAddress: contextTransactionDetails?.receivingAddress,
-        });
+      setMessage(`Waiting for transaction confirmation...`);
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      if (receipt.status === 'success') {
+        setMessage(`Transaction confirmed successfully!`);
+        setInteractionState('SUCCESS');
+        
+        if (onTransactionComplete) {
+          onTransactionComplete({
+            txHash,
+            network: selectedNetwork,
+            token: selectedToken?.key,
+            tokenSymbol: selectedToken?.symbol,
+            amount: contextTransactionDetails?.amount,
+            receivingAddress: contextTransactionDetails?.receivingAddress,
+          });
+        }
+      } else {
+        throw new Error('Transaction reverted on-chain.');
       }
     } catch (err) {
       setError(err);
@@ -247,8 +273,10 @@ const TransactionReview = ({ onTransactionComplete }) => {
         reason = "User denied transaction";
       } else if (err.name === 'ContractFunctionRevertedError' || (err.data && err.data.message)) {
         reason = err.shortMessage || err.data?.message || err.message;
+      } else if (err.message === 'Transaction reverted on-chain.') {
+        reason = err.message;
       } else {
-        reason = err.shortMessage || (err.message ? err.message.split('\n')[0] : "Transaction failed");
+        reason = err.shortMessage || err.message || "Transaction failed";
       }
       
       setMessage(`Transaction failed: ${reason}`);
