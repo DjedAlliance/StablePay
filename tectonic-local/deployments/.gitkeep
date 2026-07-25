@@ -1,0 +1,2 @@
+# Keeps this directory in git so vm.writeFile has somewhere to write.
+# Generated manifests are gitignored.

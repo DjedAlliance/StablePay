@@ -1,0 +1,55 @@
+# Repository-wide ignores for the StablePay monorepo.
+#
+# NOTE: `dist/` is deliberately NOT ignored. stablepay-sdk and djed-sdk both
+# commit their built bundles, because the example app and merchant integrations
+# resolve the package through `main`/`module`, which point at dist/. Ignoring it
+# would silently stop new builds from being committed.
+# (example/dist IS ignored — see stablepay-sdk/example/.gitignore.)
+
+# --- Dependencies ---
+node_modules/
+
+# --- Environment and secrets ---
+# Never commit private keys or RPC credentials.
+.env
+.env.*
+!.env.example
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Test and coverage output ---
+coverage/
+.nyc_output/
+
+# --- Caches ---
+.cache/
+.parcel-cache/
+.vite/
+*.tsbuildinfo
+
+# --- OS cruft ---
+# .DS_Store is currently tracked at the repo root by mistake. To untrack it:
+#   git rm --cached .DS_Store
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# --- Editors ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
