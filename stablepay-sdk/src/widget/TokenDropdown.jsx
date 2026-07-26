@@ -56,7 +56,11 @@ const TokenDropdown = () => {
       }
     } catch (err) {
       console.error("Error fetching transaction details:", err);
-      setError("Failed to fetch transaction details. Please try again.");
+      if (typeof window !== 'undefined' && !window.ethereum) {
+        setError("No wallet found. Please install a Web3 wallet.");
+      } else {
+        setError("Failed to fetch transaction details. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

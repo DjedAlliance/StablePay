@@ -5,6 +5,7 @@ import terser from '@rollup/plugin-terser';
 import babel from "@rollup/plugin-babel";
 import postcss from "rollup-plugin-postcss";
 import url from "@rollup/plugin-url";
+import copy from "rollup-plugin-copy";
 export default {
   input: "src/index.js",
   output: [
@@ -63,6 +64,11 @@ export default {
       exclude: "node_modules/**",
       presets: ["@babel/preset-react"],
       babelHelpers: "bundled",
+    }),
+    copy({
+      targets: [
+        { src: 'src/assets/*', dest: 'dist/assets' }
+      ]
     }),
   ],
 };
