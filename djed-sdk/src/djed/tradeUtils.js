@@ -199,6 +199,7 @@ export const getFees = async (djed) => {
       fee,
     };
   } catch (error) {
-    console.log("error", error);
+    console.error("getFees error:", error);
+    throw new Error("Failed to fetch fees from contract", { cause: error });
   }
 };
