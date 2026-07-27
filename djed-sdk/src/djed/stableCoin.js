@@ -1,5 +1,9 @@
 import { BC_DECIMALS, TRANSACTION_VALIDITY } from "../constants";
-import { decimalScaling, buildTx } from "../helpers";
+import { decimalScaling, buildTx, web3Promise } from "../helpers";
+import OracleABI from "../artifacts/OracleABI.json";
+import CoinABI from "../artifacts/CoinABI.json";
+import DjedABI from "../artifacts/DjedABI.json";
+import { createViemClients } from "../blockchain/client";
 import {
   tradeDataPriceCore,
   getFees,
@@ -22,14 +26,14 @@ export const tradeDataPriceBuySc = async (djed, scDecimals, amountScaled) => {
       djed,
       "scPrice",
       scDecimals,
-      amountScaled
+      amountScaled,
     );
     const { treasuryFee, fee } = await getFees(djed);
     const totalBCUnscaled = appendFees(
       data.totalUnscaled,
       treasuryFee,
       fee,
-      FEE_UI_UNSCALED
+      FEE_UI_UNSCALED,
     );
 
     return {
@@ -38,8 +42,9 @@ export const tradeDataPriceBuySc = async (djed, scDecimals, amountScaled) => {
       totalBCUnscaled,
     };
   } catch (error) {
-    console.log("error", error);
-  }
+  console.error("tradeDataPriceBuySc error", error);
+  throw error;
+}
 };
 
 /**
@@ -55,13 +60,13 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
       djed,
       "scPrice",
       scDecimals,
-      amountScaled
+      amountScaled,
     );
     const { treasuryFee, fee } = await getFees(djed);
     const value = convertToBC(
       data.amountUnscaled,
       data.priceUnscaled,
-      scDecimals
+      scDecimals,
     ).toString();
 
     const totalBCAmount = deductFees(value, fee, treasuryFee);
@@ -70,16 +75,19 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
       ...data,
       totalBCScaled: decimalScaling(totalBCAmount.toString(), BC_DECIMALS),
     };
-  } catch (error) {
-    console.log("error", error);
-  }
+  }catch (error) {
+  console.error("tradeDataPriceSellSc error", error);
+  throw error;
+}
 };
 
 // Function to allow User 1 (payer) to pay and User 2 (receiver) to receive stablecoins
 export const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
   // `receiver` will get the stablecoins
-  const data = djed.methods.buyStableCoins(receiver, FEE_UI_UNSCALED, UI).encodeABI();
-  
+  const data = djed.methods
+    .buyStableCoins(receiver, FEE_UI_UNSCALED, UI)
+    .encodeABI();
+
   // `payer` is sending the funds
   return buildTx(payer, DJED_ADDRESS, value, data);
 };
@@ -107,28 +115,73 @@ export const calculateFutureScPrice = async ({
   djedContract,
   oracleContract,
   stableCoinContract,
+  djedAddress,
+  oracleAddress,
+  stableCoinAddress,
   scDecimalScalingFactor,
+  rpcUrl,
 }) => {
   try {
-    const [scTargetPrice, scSupply, ratio] = await Promise.all([
-      web3Promise(oracleContract, "readData"),
-      web3Promise(stableCoinContract, "totalSupply"),
-      web3Promise(djedContract, "R", 0),
-    ]);
+    let scTargetPrice, scSupply, ratio;
+
+    // If contract instances are provided (old behavior)
+    if (
+  djedContract?.methods &&
+  oracleContract?.methods &&
+  stableCoinContract?.methods
+) {
+      [scTargetPrice, scSupply, ratio] = await Promise.all([
+        web3Promise(oracleContract, "readData"),
+        web3Promise(stableCoinContract, "totalSupply"),
+        web3Promise(djedContract, "R", 0),
+      ]);
+    }
+
+    //  If addresses + rpcUrl provided (new viem behavior)
+    else if (djedAddress && oracleAddress && stableCoinAddress && rpcUrl) {
+      const { publicClient } = createViemClients(rpcUrl);
+
+      [scTargetPrice, scSupply, ratio] = await Promise.all([
+        publicClient.readContract({
+          address: oracleAddress,
+          abi: OracleABI.abi,
+          functionName: "readData",
+        }),
+        publicClient.readContract({
+          address: stableCoinAddress,
+          abi: CoinABI.abi,
+          functionName: "totalSupply",
+        }),
+        publicClient.readContract({
+          address: djedAddress,
+          abi: DjedABI.abi,
+          functionName: "R",
+          args: [0],
+        }),
+      ]);
+    } else {
+      throw new Error(
+        "calculateFutureScPrice: either contract instances or address+rpcUrl must be provided",
+      );
+    }
 
     const futureScSupply = BigInt(scSupply) + BigInt(amountSC);
     const futureRatio = BigInt(ratio) + BigInt(amountBC);
 
+    const scTargetPriceBigInt = BigInt(scTargetPrice);
+
     if (futureScSupply === 0n) {
-      return scTargetPrice;
-    } else {
-      const futurePrice =
-        (futureRatio * BigInt(scDecimalScalingFactor)) / futureScSupply;
-      return BigInt(scTargetPrice) < futurePrice
-        ? scTargetPrice
-        : futurePrice.toString();
+      return scTargetPriceBigInt.toString();
     }
+
+    const futurePrice =
+      (futureRatio * BigInt(scDecimalScalingFactor)) / futureScSupply;
+
+    return (
+      scTargetPriceBigInt < futurePrice ? scTargetPriceBigInt : futurePrice
+    ).toString();
   } catch (error) {
-    console.log("calculateFutureScPrice error ", error);
+    console.log("calculateFutureScPrice error", error);
+    throw error;
   }
 };
