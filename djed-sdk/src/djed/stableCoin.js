@@ -1,5 +1,5 @@
 import { BC_DECIMALS, TRANSACTION_VALIDITY } from "../constants";
-import { decimalScaling, buildTx } from "../helpers";
+import { decimalScaling, buildTx ,web3Promise } from "../helpers";
 import {
   tradeDataPriceCore,
   getFees,
