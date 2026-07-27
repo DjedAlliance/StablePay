@@ -15,10 +15,19 @@ export class TectonicAdapter extends ProtocolAdapter {
   constructor(config) {
     super(config);
     this.address = config.tectonicAddress;
-    if (!this.address) {
+
+    // The zero address is rejected explicitly, not just falsy values. It is a
+    // common placeholder and it is truthy in JavaScript, so without this check
+    // it produces an opaque RPC decode error deep in init() rather than a
+    // message naming the actual problem.
+    const ZERO = "0x0000000000000000000000000000000000000000";
+    if (!this.address || this.address.toLowerCase() === ZERO) {
       throw new Error(
-        "TectonicAdapter: network config is missing `tectonicAddress`. " +
-          "Check utils/config.js for this network."
+        "TectonicAdapter: network config has no usable `tectonicAddress`" +
+          (this.address ? " (it is the zero address)" : "") +
+          ". For the local development chain, call " +
+          "StablePay.useLocalTectonic('0x...') with the address printed by " +
+          "tectonic-local/script/DeployLocal.s.sol."
       );
     }
     this.client = new TectonicClient({

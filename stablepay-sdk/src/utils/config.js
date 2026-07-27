@@ -87,12 +87,16 @@ export const networksConfig = {
     protocol: 'tectonic',
     uri: 'http://127.0.0.1:8545',
     chainId: 31337,
-    tectonicAddress: '0x0000000000000000000000000000000000000000', // <- fill in after deploying
+    // null, not the zero address: the zero address is truthy in JS, so a
+    // placeholder like '0x000...0' slips past the adapter's missing-address
+    // check and fails later as an opaque decode error instead of "missing
+    // tectonicAddress". Call useLocalTectonic() to populate both fields.
+    tectonicAddress: null,
     tokens: {
       stablecoin: {
         symbol: 'SC',
         // Same address as the protocol: under Tectonic they are one contract.
-        address: '0x0000000000000000000000000000000000000000',
+        address: null,
         decimals: 18,
         isDirectTransfer: true
       },

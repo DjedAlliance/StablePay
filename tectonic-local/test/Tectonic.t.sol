@@ -354,6 +354,89 @@ contract TectonicTest is Test {
         assertEq(tectonic.balanceOf(consumer), 0, "position was fully redeemed");
     }
 
+    /// PATCH 3b: nobody is stranded behind updateHolder's swap-and-pop.
+    ///
+    /// The sweep stops as soon as the ratio is restored, which is the whole
+    /// point of triggered redemptions — so "every holder was redeemed" is only
+    /// a fair expectation when the deficit is deep enough to need all of them.
+    /// The ratio is driven to just above parity here for that reason.
+    function test_ForcedRedemptionsVisitEveryHolderWhenAllAreNeeded() public {
+        address[3] memory buyers = [makeAddr("h1"), makeAddr("h2"), makeAddr("h3")];
+        for (uint256 j = 0; j < buyers.length; j++) {
+            vm.deal(buyers[j], 10 ether);
+            vm.prank(buyers[j]);
+            tectonic.mint{value: 2 ether}(buyers[j]);
+        }
+        assertEq(tectonic.holderCount(), 3, "three holders");
+
+        _setRatioTarget(D + D / 1000); // ~1.001: no partial sweep can restore rcrit
+        assertLt(tectonic.ratio(), CRITICAL_RATIO, "below critical");
+
+        tectonic.forceRedemptions(10);
+
+        for (uint256 j = 0; j < buyers.length; j++) {
+            assertEq(tectonic.balanceOf(buyers[j]), 0, "every holder was redeemed");
+        }
+        assertEq(tectonic.holderCount(), 0, "holder set emptied");
+    }
+
+    /// The general guarantee, which holds whatever the deficit: a sweep never
+    /// stops while the ratio is still below critical AND eligible holders
+    /// remain unvisited. Either it fixed the ratio or it ran out of holders.
+    function test_ForcedRedemptionsStopOnlyWhenRestoredOrExhausted() public {
+        address[3] memory buyers = [makeAddr("g1"), makeAddr("g2"), makeAddr("g3")];
+        for (uint256 j = 0; j < buyers.length; j++) {
+            vm.deal(buyers[j], 10 ether);
+            vm.prank(buyers[j]);
+            tectonic.mint{value: 2 ether}(buyers[j]);
+        }
+
+        _depressRatioBelowCritical();
+        tectonic.forceRedemptions(10);
+
+        if (tectonic.ratio() < CRITICAL_RATIO) {
+            assertEq(tectonic.holderCount(), 0, "stopped below critical with holders remaining");
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Constructor validation (PATCH 9)
+    // -----------------------------------------------------------------
+
+    /// rsafe == D is the dangerous case: it makes stabilityFee() divide by
+    /// zero on every operation. Paired with a valid rcrit so the rcrit check
+    /// does not fire first and mask what is being tested.
+    function test_ConstructorRejectsSafeRatioEqualToOne() public {
+        vm.expectRevert("Tectonic: rsafe must exceed rcrit");
+        new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, D);
+    }
+
+    function test_ConstructorRejectsCriticalRatioBelowOne() public {
+        vm.expectRevert("Tectonic: rcrit must exceed 1");
+        new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, D - 1, SAFE_RATIO);
+    }
+
+    function test_ConstructorRejectsSafeRatioAtOrAboveTwo() public {
+        vm.expectRevert("Tectonic: rsafe must be below 2");
+        new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, 2 * D);
+    }
+
+    function test_ConstructorRejectsFeesThatConsumeThePayment() public {
+        vm.expectRevert("Tectonic: fees consume the entire payment");
+        new Tectonic(address(oracle), treasury, D / 2, D / 2, CRITICAL_RATIO, SAFE_RATIO);
+    }
+
+    function test_ConstructorRejectsZeroOracle() public {
+        vm.expectRevert("Tectonic: oracle is the zero address");
+        new Tectonic(address(0), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, SAFE_RATIO);
+    }
+
+    function test_ConstructorAcceptsValidParameters() public {
+        Tectonic t = new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, SAFE_RATIO);
+        assertEq(t.criticalReserveRatio(), CRITICAL_RATIO);
+        assertEq(t.safeReserveRatio(), SAFE_RATIO);
+    }
+
     // -----------------------------------------------------------------
     // Invariants
     // -----------------------------------------------------------------

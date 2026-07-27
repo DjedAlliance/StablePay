@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AEL
 pragma solidity ^0.8.0;
 
-import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract Coin is ERC20 {
     address public immutable owner;

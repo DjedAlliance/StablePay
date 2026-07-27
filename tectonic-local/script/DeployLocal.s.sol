@@ -56,10 +56,6 @@ contract DeployLocal is Script {
         console2.log("Reserve (wei)   :", tectonic.R());
         console2.log("Equity  (wei)   :", tectonic.E());
 
-        // vm.writeFile does not create parent directories, and an empty dir is
-        // not tracked by git, so a fresh clone would not have one.
-        vm.createDir("deployments", true);
-
         string memory json = string.concat(
             '{\n  "chainId": ', vm.toString(block.chainid),
             ',\n  "oracle": "', vm.toString(address(oracle)),
@@ -77,6 +73,17 @@ contract DeployLocal is Script {
         // carry on — the addresses are already printed above, and failing here
         // would abort the script and prevent the broadcast of a deployment
         // that otherwise succeeded.
+        //
+        // createDir must sit inside the guard too: vm.writeFile does not create
+        // parent directories, and createDir is itself subject to fs_permissions,
+        // so leaving it outside would revert on exactly the failure this
+        // try/catch exists to absorb.
+        try vm.createDir("deployments", true) {
+            // directory ready
+        } catch {
+            console2.log("WARNING: could not create deployments/ directory.");
+        }
+
         try vm.writeFile("deployments/local.json", json) {
             console2.log("Wrote deployments/local.json");
         } catch {

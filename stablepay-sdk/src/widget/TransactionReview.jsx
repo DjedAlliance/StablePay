@@ -118,6 +118,17 @@ const TransactionReview = ({ onTransactionComplete }) => {
     return <div className={styles.loading}>Initializing transaction...</div>;
   }
 
+  // Single source of truth for the symbol the merchant is credited in.
+  //
+  // The on-screen invoice and the value reported to the merchant's integration
+  // must agree, so both read this one value. It comes from the network config
+  // rather than the adapter's live on-chain symbol for two reasons: the config
+  // is what the merchant configured and reconciles against, and DjedAdapter
+  // does not expose a symbol at all, so an adapter-sourced value silently fell
+  // back to "SC" on every Djed network.
+  const stablecoinSymbol =
+    networkSelector.getSelectedNetworkConfig()?.tokens?.stablecoin?.symbol ?? "SC";
+
   const handleConnectWallet = async () => {
     setMessage("");
     setError(null);
@@ -265,7 +276,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
             // whichever token the consumer chose to pay with. This is the
             // figure a merchant should reconcile against their invoice.
             amountReceived: contextTransactionDetails?.amount,
-            receivedSymbol: contextTransactionDetails?.symbol ?? 'SC',
+            receivedSymbol: stablecoinSymbol,
 
             receivingAddress: contextTransactionDetails?.receivingAddress,
           });
@@ -333,7 +344,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
           <span className={styles.transactionLabel}>Merchant Receives:</span>
           <span className={styles.transactionValue}>
             {contextTransactionDetails.amount}{" "}
-            {networkSelector.getSelectedNetworkConfig()?.tokens?.stablecoin?.symbol ?? "SC"}
+            {stablecoinSymbol}
           </span>
         </div>
       )}

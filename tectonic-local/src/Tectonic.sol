@@ -63,6 +63,19 @@ pragma solidity ^0.8.0;
 //      Fix: write the timestamp before the burn, so the re-entrant call sees
 //      t = 0. Found by test_ChargingAFeeDoesNotRecurseUntilOutOfGas.
 //
+//   9. The constructor validated none of the parameter constraints the paper
+//      states in section 2.11. In particular rsafe == D makes stabilityFee()
+//      divide by zero on every operation, bricking the deployment with no
+//      signal at deploy time. Fix: require the documented bounds, plus
+//      non-zero oracle and treasury addresses.
+//
+//   3b. forceRedemptions advanced its index immediately after a redemption,
+//      but updateHolder backfills the vacated slot by swapping in the last
+//      holder — so that holder was passed over for the rest of the sweep.
+//      Coverage still worked out because the index wraps, so this is a
+//      robustness fix rather than a live defect. Fix: only advance when the
+//      slot was not backfilled.
+//
 //   Minor additions by the fork (not bug fixes): holderCount() view for tests
 //   and SDK use; send() no-ops on zero amount to avoid pointless calls to the
 //   treasury when treasuryFee == 0; equity coin symbol "RC" -> "EC".
@@ -150,6 +163,20 @@ contract Tectonic is ERC20, ReentrancyGuard {
         uint256 _criticalReserveRatio,
         uint256 _safeReserveRatio
     ) ERC20("StableCoin", "SC") payable {
+        // PATCH 9: validate the parameter constraints the paper states in
+        // section 2.11 (non-negative fees summing below 1, and
+        // 1 < rcrit < rsafe < 2). Upstream accepts any values, so a deployment
+        // with rsafe == D makes stabilityFee() divide by zero on every
+        // transfer, mint and redeem — a permanently bricked contract with no
+        // signal at deploy time. Failing here costs one transaction; failing
+        // later costs the deployment.
+        require(oracleAddress != address(0), "Tectonic: oracle is the zero address");
+        require(_treasury != address(0), "Tectonic: treasury is the zero address");
+        require(_fee + _treasuryFee < D, "Tectonic: fees consume the entire payment");
+        require(_criticalReserveRatio > D, "Tectonic: rcrit must exceed 1");
+        require(_safeReserveRatio > _criticalReserveRatio, "Tectonic: rsafe must exceed rcrit");
+        require(_safeReserveRatio < 2 * D, "Tectonic: rsafe must be below 2");
+
         equityCoin = new Coin("EquityCoin", "EC");
         treasury = _treasury;
         treasuryFee = _treasuryFee;
@@ -256,16 +283,27 @@ contract Tectonic is ERC20, ReentrancyGuard {
         // pseudo-random starting index for fairness among holders
         uint256 i = 1 + (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % n);
         while (ratio() < criticalReserveRatio && iterations < maxIterations && gasleft() > gasStart / 2) {
+            if (holderCount() == 0) break; // PATCH 3: supply fully redeemed
+            if (i >= holders.length) i = 1;
+
             address h = holders[i];
             uint256 b = balanceOf(h);
+            uint256 lengthBefore = holders.length;
+
             if (b > 0) {
                 _redeem(b, h, h);
                 totalRedeemedAmountSC += b;
             }
             iterations++;
-            i++;
-            if (i >= holders.length) i = 1;
-            if (holderCount() == 0) break; // PATCH 3: supply fully redeemed
+
+            // PATCH 3b: updateHolder removes a holder by swapping the last
+            // entry into the vacated slot, so after a redemption index `i`
+            // holds a different, unvisited holder. Advancing unconditionally
+            // would pass over them for the remainder of this sweep. Coverage
+            // still worked out in practice because the index wraps, but
+            // re-examining the slot matches the evident intent and makes the
+            // traversal independent of the wrap arithmetic.
+            if (holders.length == lengthBefore) i++;
         }
         uint256 finalRatio = ratio();
         // refund capped at 0.1% of the total amount redeemed
