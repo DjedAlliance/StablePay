@@ -14,7 +14,7 @@ import {
 
 export const scalingFactor = decimalUnscaling("1", SCALING_DECIMALS);
 export const FEE_UI_UNSCALED = decimalUnscaling(
-  (FEE_UI / 100).toString(),
+  FEE_UI.toString(),
   SCALING_DECIMALS
 );
 export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
