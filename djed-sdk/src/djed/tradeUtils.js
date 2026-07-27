@@ -13,10 +13,12 @@ import {
 } from "../helpers";
 
 export const scalingFactor = decimalUnscaling("1", SCALING_DECIMALS);
+
 export const FEE_UI_UNSCALED = decimalUnscaling(
-  (FEE_UI / 100).toString(),
+  FEE_UI.toString(),
   SCALING_DECIMALS
 );
+
 export const tradeDataPriceCore = (djed, method, decimals, amountScaled) => {
   const amountUnscaled = decimalUnscaling(amountScaled, decimals);
   return scaledUnscaledPromise(web3Promise(djed, method, 0), BC_DECIMALS).then(
@@ -118,7 +120,7 @@ export const isTxLimitReached = (amountUSD, totalSCSupply, thresholdSCSupply) =>
   amountUSD > TRANSACTION_USD_LIMIT &&
   BigInt(totalSCSupply) >= BigInt(thresholdSCSupply);
 
-export const promiseTx = (isWalletConnected, tx, signer) => {
+export const promiseTx = (isWalletConnected, tx, singer) => {
   if (!isWalletConnected) {
     return Promise.reject(new Error("Metamask not connected!"));
   }
@@ -129,12 +131,25 @@ export const promiseTx = (isWalletConnected, tx, signer) => {
 };
 
 export const verifyTx = (web3, hash) => {
-  return new Promise((res) => {
-    setTimeout(() => {
-      web3.eth
-        .getTransactionReceipt(hash)
-        .then((receipt) => res(receipt.status));
-    }, CONFIRMATION_WAIT_PERIOD);
+  const start = Date.now();
+  const timeout = 60_000;
+
+  return new Promise((resolve, reject) => {
+    const poll = async () => {
+      try {
+        const receipt = await web3.eth.getTransactionReceipt(hash);
+        if (receipt) {
+          return resolve(receipt.status);
+        }
+        if (Date.now() - start >= timeout) {
+          return reject(new Error("Transaction confirmation timeout"));
+        }
+        setTimeout(poll, CONFIRMATION_WAIT_PERIOD);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    poll();
   });
 };
 
