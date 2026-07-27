@@ -1,13 +1,14 @@
 export function web3Promise(contract, method, ...args) {
   return contract.methods[method](...args).call();
 }
+
 // Function to build a transaction
 // Set gas limit to 500,000 by default
 export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
   const tx = {
     to: to_,
     from: from_,
-    value: "0x" + BigInt(value_).toString(16), // Use BigInt instead of BN
+    value: "0x" + BigInt(value_).toString(16),
     data: data_,
   };
   if (setGasLimit) {
@@ -15,6 +16,7 @@ export function buildTx(from_, to_, value_, data_, setGasLimit = true) {
   }
   return tx;
 }
+
 export function convertInt(promise) {
   return promise.then((value) => parseInt(value));
 }
@@ -32,6 +34,9 @@ function intersperseCommas(s) {
   }
 }
 
+/* ============================================================
+   FIXED decimalScaling (No commas in fractional part)
+   ============================================================ */
 export function decimalScaling(unscaledString, decimals, show = 6) {
   if (decimals <= 0) {
     return unscaledString + "0".repeat(-decimals);
@@ -48,14 +53,10 @@ export function decimalScaling(unscaledString, decimals, show = 6) {
     suffix = unscaledString.slice(-decimals);
   }
 
+  // Limit visible decimals
   suffix = suffix.slice(0, show);
-  suffix = intersperseCommas(suffix);
 
-  if (show <= decimals) {
-    // Remove commas after the decimal point
-    suffix = suffix.replace(/,/g, "");
-  }
-
+  // Apply commas ONLY to integer part
   prefix = reverseString(intersperseCommas(reverseString(prefix)));
 
   return prefix + "." + suffix;
@@ -71,14 +72,18 @@ export function decimalUnscaling(scaledString, decimals) {
   let s =
     scaledString.slice(0, pos) +
     scaledString.slice(pos + 1, pos + 1 + decimals);
+
   if (scaledString.length - pos - 1 < decimals) {
     s += "0".repeat(decimals - (scaledString.length - pos - 1));
   }
+
   return s;
 }
 
 export function scaledPromise(promise, scaling) {
-  return promise.then((value) => decimalScaling(value.toString(10), scaling));
+  return promise.then((value) =>
+    decimalScaling(value.toString(10), scaling)
+  );
 }
 
 export function scaledUnscaledPromise(promise, scaling) {
@@ -89,7 +94,11 @@ export function scaledUnscaledPromise(promise, scaling) {
 }
 
 export function percentageScale(value, scaling, showSymbol = false) {
-  const calculatedValue = decimalScaling(value.toString(10), scaling - 2, 2);
+  const calculatedValue = decimalScaling(
+    value.toString(10),
+    scaling - 2,
+    2
+  );
   if (showSymbol) {
     return calculatedValue + "%";
   }
@@ -97,9 +106,15 @@ export function percentageScale(value, scaling, showSymbol = false) {
 }
 
 export function percentScaledPromise(promise, scaling) {
-  return promise.then((value) => percentageScale(value, scaling, true));
+  return promise.then((value) =>
+    percentageScale(value, scaling, true)
+  );
 }
-// currency conversions:
+
+/* ============================================================
+   Currency conversions (unchanged from your version)
+   ============================================================ */
+
 export function calculateBcUsdEquivalent(coinsDetails, amountFloat) {
   const adaPerUsd = parseFloat(
     coinsDetails?.scaledScExchangeRate.replaceAll(",", "")
@@ -120,12 +135,15 @@ export function calculateRcUsdEquivalent(coinsDetails, amountFloat) {
   const eqPrice = (1e6 * amountFloat * adaPerRc) / adaPerUsd;
   return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
 }
+
 export function getRcUsdEquivalent(coinsDetails, amountFloat) {
   return "$" + calculateRcUsdEquivalent(coinsDetails, amountFloat);
 }
 
 export function getScAdaEquivalent(coinsDetails, amountFloat) {
-  const adaPerSc = parseFloat(coinsDetails?.scaledPriceSc.replaceAll(",", ""));
+  const adaPerSc = parseFloat(
+    coinsDetails?.scaledPriceSc.replaceAll(",", "")
+  );
   const eqPrice = 1e6 * amountFloat * adaPerSc;
   return decimalScaling(eqPrice.toFixed(0).toString(10), 6);
 }
