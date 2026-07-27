@@ -1,6 +1,7 @@
 import djedArtifact from "../artifacts/DjedABI.json";
 import coinArtifact from "../artifacts/CoinABI.json";
-import { convertInt, web3Promise } from "../helpers";
+import { convertInt, web3Promise, buildTx } from "../helpers";
+import { createDjedAdapter } from "../adapters/djedAdapter";
 
 //setting up djed
 export const getDjedContract = (web3, DJED_ADDRESS) => {
@@ -26,4 +27,15 @@ export const getDecimals = async (stableCoin, reserveCoin) => {
     convertInt(web3Promise(reserveCoin, "decimals")),
   ]);
   return { scDecimals, rcDecimals };
+};
+
+// Adapter should be created once and passed in (dependency injection)
+const buyScTx = (adapter, payer, receiver, value, ui, DJED_ADDRESS) => {
+  const data = adapter.buyStableCoins(receiver, ui).encodeABI();
+  return buildTx(payer, DJED_ADDRESS, value, data);
+};
+
+const sellScTx = (adapter, account, amount, ui, DJED_ADDRESS) => {
+  const data = adapter.sellStableCoins(amount, account, ui).encodeABI();
+  return buildTx(account, DJED_ADDRESS, 0, data);
 };
