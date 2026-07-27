@@ -37,7 +37,6 @@ export class Transaction {
           /\brevert(ed)?\b|execution reverted/i.test(String(message));
         if (isReverted) {
           const getNetworkInfo = (uri) => {
-            if (uri.includes('milkomeda')) return { name: 'Milkomeda', chainId: '2001' };
             if (uri.includes('mordor')) return { name: 'Mordor Testnet', chainId: '63' };
             if (uri.includes('sepolia')) return { name: 'Sepolia', chainId: '11155111' };
             if (uri.includes('etc.rivet.link')) return { name: 'Ethereum Classic', chainId: '61' };
@@ -60,7 +59,6 @@ export class Transaction {
       const isConnectionError = error.code === -32603 || error.code === 4001 || error.code === -32005 || (error.message && (error.message.includes('CONNECTION ERROR') || error.message.includes('ERR_NAME_NOT_RESOLVED')));
       if (isConnectionError) {
         const getNetworkName = (uri) => {
-          if (uri.includes('milkomeda')) return 'Milkomeda';
           if (uri.includes('mordor')) return 'Mordor';
           if (uri.includes('sepolia')) return 'Sepolia';
           return 'the selected network';

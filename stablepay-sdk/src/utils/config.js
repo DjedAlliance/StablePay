@@ -19,25 +19,6 @@ export const networksConfig = {
     },
     feeUI: 0
   },
-  'milkomeda-mainnet': {
-    uri: 'https://rpc-mainnet-cardano-evm.c1.milkomeda.com',
-    chainId: 2001,
-    djedAddress: '0x67A30B399F5Ed499C1a6Bc0358FA6e42Ea4BCe76',
-    tokens: {
-      stablecoin: {
-        symbol: 'MOD',
-        address: '0xcbA90fB1003b9D1bc6a2b66257D2585011b004e9',
-        decimals: 18,
-        isDirectTransfer: true
-      },
-      native: {
-        symbol: 'mADA',
-        decimals: 18,
-        isNative: true
-      }
-    },
-    feeUI: 0
-  },
   'ethereum-classic': {
     uri: 'https://etc.rivet.link',
     chainId: 61,
