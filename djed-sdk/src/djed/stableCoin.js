@@ -1,5 +1,7 @@
 import { BC_DECIMALS, TRANSACTION_VALIDITY } from "../constants";
 import { decimalScaling, buildTx } from "../helpers";
+import { createViemClients } from "../blockchain/client";
+const { publicClient } = createViemClients(process.env.RPC_URL);
 import {
   tradeDataPriceCore,
   getFees,
@@ -79,7 +81,7 @@ export const tradeDataPriceSellSc = async (djed, scDecimals, amountScaled) => {
 export const buyScTx = (djed, payer, receiver, value, UI, DJED_ADDRESS) => {
   // `receiver` will get the stablecoins
   const data = djed.methods.buyStableCoins(receiver, FEE_UI_UNSCALED, UI).encodeABI();
-  
+
   // `payer` is sending the funds
   return buildTx(payer, DJED_ADDRESS, value, data);
 };
@@ -111,9 +113,22 @@ export const calculateFutureScPrice = async ({
 }) => {
   try {
     const [scTargetPrice, scSupply, ratio] = await Promise.all([
-      web3Promise(oracleContract, "readData"),
-      web3Promise(stableCoinContract, "totalSupply"),
-      web3Promise(djedContract, "R", 0),
+      publicClient.readContract({
+        address: oracleAddress,
+        abi: OracleABI,
+        functionName: "readData",
+      }),
+      publicClient.readContract({
+        address: stableCoinAddress,
+        abi: CoinABI,
+        functionName: "totalSupply",
+      }),
+      publicClient.readContract({
+        address: djedAddress,
+        abi: DjedABI,
+        functionName: "R",
+        args: [0],
+      }),
     ]);
 
     const futureScSupply = BigInt(scSupply) + BigInt(amountSC);
