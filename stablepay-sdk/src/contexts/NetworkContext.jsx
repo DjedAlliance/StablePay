@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { TokenSelector } from '../core/TokenSelector';
 
 const NetworkContext = createContext();
@@ -9,52 +9,63 @@ export const NetworkProvider = ({ children, networkSelector }) => {
   const [selectedToken, setSelectedToken] = useState(null);
   const [transactionDetails, setTransactionDetails] = useState(null);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedToken(null);
     setTransactionDetails(null);
-  };
+  }, []);
 
-  const selectNetwork = (networkKey) => {
+  const selectNetwork = useCallback((networkKey) => {
     if (networkSelector.selectNetwork(networkKey)) {
       setSelectedNetwork(networkKey);
       resetState(); 
       return true;
     }
     return false;
-  };
+  }, [networkSelector, resetState]);
 
-  const selectToken = (tokenKey) => {
+  const selectToken = useCallback((tokenKey) => {
     if (tokenSelector.selectToken(tokenKey)) {
       const token = tokenSelector.getSelectedToken();
       setSelectedToken(token);
       return true;
     }
     return false;
-  };
+  }, [tokenSelector]);
 
-  const resetSelections = () => {
+  const resetSelections = useCallback(() => {
     networkSelector.selectNetwork(null);
     setSelectedNetwork(null);
     resetState();
-  };
+  }, [networkSelector, resetState]);
 
   // Synchronize context state with NetworkSelector
   useEffect(() => {
     setSelectedNetwork(networkSelector.selectedNetwork);
   }, [networkSelector.selectedNetwork]);
 
+  const contextValue = useMemo(() => ({ 
+    networkSelector,
+    tokenSelector,
+    selectedNetwork,
+    selectedToken,
+    transactionDetails,
+    setTransactionDetails,
+    selectNetwork,
+    selectToken,
+    resetSelections
+  }), [
+    networkSelector,
+    tokenSelector,
+    selectedNetwork,
+    selectedToken,
+    transactionDetails,
+    selectNetwork,
+    selectToken,
+    resetSelections
+  ]);
+
   return (
-    <NetworkContext.Provider value={{ 
-      networkSelector,
-      tokenSelector,
-      selectedNetwork,
-      selectedToken,
-      transactionDetails,
-      setTransactionDetails,
-      selectNetwork,
-      selectToken,
-      resetSelections
-    }}>
+    <NetworkContext.Provider value={contextValue}>
       {children}
     </NetworkContext.Provider>
   );
