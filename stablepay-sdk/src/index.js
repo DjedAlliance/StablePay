@@ -2,6 +2,8 @@
 import { NetworkSelector } from './core/NetworkSelector';
 import { Transaction } from './core/Transaction';
 import { Config } from './core/MerchantConfig';
+import { TectonicAdapter } from './core/adapters/TectonicAdapter.js';
+import { networksConfig, useLocalTectonic } from './utils/config';
 import Widget from './widget/Widget.jsx';
 import PayButton from './widget/PayButton.jsx';
 import Dialog from './widget/Dialog.jsx';
@@ -16,7 +18,28 @@ const StablePay = {
   Widget,
   PayButton,
   Dialog,
-  NetworkDropdown
+  NetworkDropdown,
+
+  // Chain access layer. Most integrations never touch this — Transaction wraps
+  // it — but it is exported for tests and for embedders who need direct reads.
+  TectonicAdapter,
+
+  // Network registry and the local-development helper.
+  networksConfig,
+  useLocalTectonic,
+};
+
+export {
+  NetworkSelector,
+  Transaction,
+  Config,
+  Widget,
+  PayButton,
+  Dialog,
+  NetworkDropdown,
+  TectonicAdapter,
+  networksConfig,
+  useLocalTectonic,
 };
 
 export default StablePay;

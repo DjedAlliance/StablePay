@@ -1,0 +1,63 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+cache = true
+
+optimizer = true
+optimizer_runs = 200
+
+# Matches the upstream Tectonic-EVM-Contracts pin so the fork stays comparable.
+solc_version = "0.8.23"
+evm_version = "paris"
+
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
+
+ffi = false
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
+
+# ---------------------------------------------------------------------------
+# forge lint
+#
+# This project is a FORK. Its naming deliberately matches
+# StabilityNexus/Tectonic-EVM-Contracts so that `diff` against upstream shows
+# only the eight intentional patches, and so that fixes can be handed back as
+# clean PRs.
+#
+# The suppressed lints all want cosmetic renames of forked code. Two concrete
+# reasons not to apply them:
+#
+#   1. Renaming a `public` state variable or constant CHANGES THE ABI. Turning
+#      `criticalReserveRatio` into `CRITICAL_RESERVE_RATIO` renames its
+#      auto-generated getter, which breaks tectonic-sdk's TectonicABI.json and
+#      every SDK call that reads it.
+#   2. Renaming `amountSC` -> `amountSc` throughout would bury the seven real
+#      patches in hundreds of cosmetic diff lines.
+#
+# If upstream later adopts these conventions, drop this block and follow suit.
+# Lint notes are non-blocking, so deleting this section only restores noise.
+# ---------------------------------------------------------------------------
+[lint]
+exclude_lints = [
+    "mixed-case-variable",          # amountSC / amountBC: upstream naming, mirrors the paper
+    "mixed-case-function",          # _requiredBC in tests, matching the above
+    "screaming-snake-case-const",   # renaming public constants changes the ABI
+    "screaming-snake-case-immutable", # renaming public immutables changes the ABI
+    "unaliased-plain-import",       # upstream import style, kept for diffability
+    "unwrapped-modifier-logic",     # Coin.sol is copied verbatim from upstream
+    "unsafe-cheatcode",             # vm.writeFile in DeployLocal is deliberate
+]
+
+[fuzz]
+runs = 512
+max_test_rejects = 65536
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = true
