@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNetwork } from "../contexts/NetworkContext";
 import { useWallet } from "../contexts/WalletContext";
 import { Transaction } from "../core/Transaction";
-import { parseEther, encodeFunctionData, parseUnits } from "viem"; 
+import { parseUnits } from "viem";
 import styles from "../styles/PricingCard.css"; 
 
 const TransactionReview = ({ onTransactionComplete }) => {
@@ -25,7 +25,10 @@ const TransactionReview = ({ onTransactionComplete }) => {
   } = useWallet();
 
   const [transaction, setTransaction] = useState(null);
+  // Display string only. The exact wei amount is re-quoted immediately before
+  // signing and never derived by parsing this back.
   const [tradeDataBuySc, setTradeDataBuySc] = useState(null);
+  const [protocolWarnings, setProtocolWarnings] = useState([]);
   const [message, setMessage] = useState("");
   const [txHash, setTxHash] = useState(null);
   const [error, setError] = useState(null);
@@ -34,6 +37,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
   useEffect(() => {
     setTradeDataBuySc(null);
+    setProtocolWarnings([]);
     setMessage("");
     setError(null);
     setTxHash(null);
@@ -49,22 +53,34 @@ const TransactionReview = ({ onTransactionComplete }) => {
         const receivingAddress = networkSelector.getReceivingAddress();
         const tokenAmount = networkSelector.getTokenAmount(selectedToken.key);
 
-        const newTransaction = new Transaction(
-          networkConfig.uri,
-          networkConfig.djedAddress
-        );
+        // The whole network config is passed now: the adapter layer picks the
+        // protocol (Djed or Tectonic) from it.
+        const newTransaction = new Transaction(networkConfig);
         await newTransaction.init();
         setTransaction(newTransaction);
 
-        let tradeData = null;
+        let quote = null;
         if (selectedToken.key === "native") {
           try {
-            tradeData = await newTransaction.handleTradeDataBuySc(String(tokenAmount));
-            setTradeDataBuySc(tradeData);
+            quote = await newTransaction.quoteNativePayment(String(tokenAmount));
+
+            setTradeDataBuySc(quote.requiredBCFormatted);
           } catch (tradeError) {
             console.error("Error fetching trade data:", tradeError);
           }
         }
+
+        // Protocol-specific merchant warnings (Tectonic stability fees and
+        // triggered redemptions have no Djed equivalent).
+        // getWarnings() already swallows adapter errors, but the promise can
+        // still reject if setProtocolWarnings throws (e.g. unmount mid-flight),
+        // so catch here rather than leaving an unhandled rejection.
+        newTransaction
+          .getWarnings()
+          .then(setProtocolWarnings)
+          .catch((warningsError) => {
+            console.error("Error fetching protocol warnings:", warningsError);
+          });
 
         setTransactionDetails({
           network: selectedNetwork,
@@ -72,10 +88,9 @@ const TransactionReview = ({ onTransactionComplete }) => {
           tokenSymbol: selectedToken.symbol,
           amount: tokenAmount || "0",
           receivingAddress,
-          djedContractAddress: networkConfig.djedAddress,
           isDirectTransfer: selectedToken.isDirectTransfer || false,
           isNativeToken: selectedToken.isNative || false,
-          tradeAmount: tradeData ? tradeData.amount : null,
+          tradeAmount: quote ? quote.requiredBCFormatted : null,
           ...newTransaction.getBlockchainDetails(),
         });
       } catch (err) {
@@ -111,6 +126,17 @@ const TransactionReview = ({ onTransactionComplete }) => {
     return <div className={styles.loading}>Initializing transaction...</div>;
   }
 
+  // Single source of truth for the symbol the merchant is credited in.
+  //
+  // The on-screen invoice and the value reported to the merchant's integration
+  // must agree, so both read this one value. It comes from the network config
+  // rather than the adapter's live on-chain symbol for two reasons: the config
+  // is what the merchant configured and reconciles against, and DjedAdapter
+  // does not expose a symbol at all, so an adapter-sourced value silently fell
+  // back to "SC" on every Djed network.
+  const stablecoinSymbol =
+    networkSelector.getSelectedNetworkConfig()?.tokens?.stablecoin?.symbol ?? "SC";
+
   const handleConnectWallet = async () => {
     setMessage("");
     setError(null);
@@ -145,61 +171,52 @@ const TransactionReview = ({ onTransactionComplete }) => {
     }
 
     let builtTx;
+    // What the CONSUMER hands over, which is not the same as what the merchant
+    // receives. On the native path the consumer pays basecoin (e.g. 0.00255102
+    // ETH) and the merchant receives the invoice in stablecoins (5 SC).
+    // Conflating the two produces nonsense like "5 ETH".
+    let paidAmount = contextTransactionDetails.amount;
+    let paidSymbol = selectedToken.symbol;
+
     try {
       const receiver = contextTransactionDetails.receivingAddress;
 
       if (selectedToken.key === "native") {
-        const UI = "0x0232556C83791b8291E9b23BfEa7d67405Bd9839";
-        const amountToSend = tradeDataBuySc || "0";
-        const valueInWei = parseEther(String(amountToSend));
-
-        builtTx = await transaction.buyStablecoins(
-          account,
-          receiver,
-          valueInWei,
-          UI
+        // Re-quote immediately before signing. The oracle price moves, and a
+        // quote fetched when the dialog opened may no longer buy the invoiced
+        // amount of stablecoins.
+        const quote = await transaction.quoteNativePayment(
+          String(contextTransactionDetails.amount)
         );
 
-        builtTx = {
-          ...builtTx,
-          value: valueInWei,
-          account: account,
-        };
+        setTradeDataBuySc(quote.requiredBCFormatted);
+        paidAmount = quote.requiredBCFormatted; // basecoin, not the SC invoice
+
+        builtTx = await transaction.buyStablecoins(account, receiver, quote.requiredBC);
+        builtTx = { ...builtTx, value: quote.requiredBC, account };
       } else {
-        const networkConfig = networkSelector.getSelectedNetworkConfig();
-        const stablecoinAddress = networkConfig?.tokens?.stablecoin?.address;
-        
+        // The stablecoin address comes from the adapter: under Tectonic the
+        // protocol contract is itself the token, so there is no separate
+        // address to read out of the config.
+        const stablecoinAddress = transaction.getStablecoinAddress();
         if (!stablecoinAddress) {
-          throw new Error('Stablecoin address not found in network configuration');
+          throw new Error('Stablecoin address could not be resolved for this network');
         }
 
         const amountToSend = contextTransactionDetails.amount
           ? parseUnits(
               String(contextTransactionDetails.amount),
-              contextTransactionDetails.stableCoinDecimals
+              transaction.getDecimals()
             )
-          : "0";
+          : 0n;
 
         builtTx = {
-          to: stablecoinAddress,
-          value: 0n,
-          data: encodeFunctionData({
-            abi: [
-              {
-                inputs: [
-                  { internalType: "address", name: "to", type: "address" },
-                  { internalType: "uint256", name: "amount", type: "uint256" },
-                ],
-                name: "transfer",
-                outputs: [{ internalType: "bool", name: "", type: "bool" }],
-                stateMutability: "nonpayable",
-                type: "function",
-              },
-            ],
-            functionName: "transfer",
-            args: [receiver, amountToSend],
+          ...transaction.buildTransferTx({
+            from: account,
+            to: receiver,
+            amount: amountToSend,
           }),
-          account: account,
+          account,
         };
       }
     } catch (err) {
@@ -257,8 +274,18 @@ const TransactionReview = ({ onTransactionComplete }) => {
             txHash,
             network: selectedNetwork,
             token: selectedToken?.key,
-            tokenSymbol: selectedToken?.symbol,
-            amount: contextTransactionDetails?.amount,
+
+            // What the consumer paid. On the native path this is basecoin
+            // (0.00255102 ETH), NOT the stablecoin invoice.
+            amount: paidAmount,
+            tokenSymbol: paidSymbol,
+
+            // What the merchant receives — always denominated in stablecoins,
+            // whichever token the consumer chose to pay with. This is the
+            // figure a merchant should reconcile against their invoice.
+            amountReceived: contextTransactionDetails?.amount,
+            receivedSymbol: stablecoinSymbol,
+
             receivingAddress: contextTransactionDetails?.receivingAddress,
           });
         }
@@ -317,6 +344,32 @@ const TransactionReview = ({ onTransactionComplete }) => {
         </span>
       </div>
 
+      {/* On the native path the consumer pays basecoin but the merchant is
+          credited stablecoins. Showing only one side invites the reading that
+          the invoice itself is denominated in ETH. */}
+      {selectedToken.key === "native" && (
+        <div className={styles.transactionInfo}>
+          <span className={styles.transactionLabel}>Merchant Receives:</span>
+          <span className={styles.transactionValue}>
+            {contextTransactionDetails.amount}{" "}
+            {stablecoinSymbol}
+          </span>
+        </div>
+      )}
+
+      {protocolWarnings.map((warning, index) => (
+        <div
+          key={index}
+          className={styles.messageBox}
+          style={{
+            fontSize: "0.85em",
+            color: warning.level === "warning" ? "#ff4d4f" : "inherit",
+          }}
+        >
+          {warning.message}
+        </div>
+      ))}
+
       {message && (
         <div className={styles.messageBox}>
           {message}
@@ -367,7 +420,13 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
           {account && interactionState === 'IDLE' && (
             <button className={styles.walletButton} onClick={executePayment}>
-              Pay {contextTransactionDetails.amount} {contextTransactionDetails.tokenSymbol}
+              {/* Must match the "You Pay" row above: on the native path the
+                  consumer pays basecoin, not the stablecoin invoice amount. */}
+              Pay{" "}
+              {selectedToken.key === "stablecoin"
+                ? contextTransactionDetails.amount
+                : tradeDataBuySc ?? "…"}{" "}
+              {contextTransactionDetails.tokenSymbol}
             </button>
           )}
 

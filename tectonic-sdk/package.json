@@ -1,0 +1,24 @@
+{
+  "name": "tectonic-sdk",
+  "version": "0.1.0",
+  "description": "JavaScript SDK for interacting with Tectonic stablecoin contracts",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": ["src"],
+  "scripts": {
+    "test": "node --test test/",
+    "smoke": "node scripts/smoke-local.mjs"
+  },
+  "peerDependencies": {
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "viem": "^2.21.0"
+  },
+  "keywords": ["tectonic", "stablecoin", "stablepay", "ethereum", "defi"],
+  "license": "MIT"
+}
