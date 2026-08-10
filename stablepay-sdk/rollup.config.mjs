@@ -27,8 +27,6 @@ export default {
       file: "dist/umd/index.js",
       exports: "named",
       globals: {
-        "djed-sdk": "DjedSdk",
-        web3: "Web3",
         react: "React",
         "react-dom": "ReactDOM",
         viem: "viem",
@@ -38,7 +36,7 @@ export default {
       assetFileNames: "assets/[name][extname]",
     },
   ],
-  external: ["djed-sdk", "web3", "react", "react-dom", "viem", "viem/chains"],
+  external: ["react", "react-dom", "viem", "viem/chains"],
   plugins: [
     resolve({
       extensions: [".js", ".jsx"],

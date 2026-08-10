@@ -53,8 +53,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
         const receivingAddress = networkSelector.getReceivingAddress();
         const tokenAmount = networkSelector.getTokenAmount(selectedToken.key);
 
-        // The whole network config is passed now: the adapter layer picks the
-        // protocol (Djed or Tectonic) from it.
+        // Transaction takes the whole network config, not a URI string.
         const newTransaction = new Transaction(networkConfig);
         await newTransaction.init();
         setTransaction(newTransaction);
@@ -70,8 +69,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
           }
         }
 
-        // Protocol-specific merchant warnings (Tectonic stability fees and
-        // triggered redemptions have no Djed equivalent).
+        // Merchant warnings specific to Tectonic: stability fees and
+        // triggered redemptions.
         newTransaction.getWarnings().then(setProtocolWarnings);
 
         setTransactionDetails({
@@ -122,10 +121,8 @@ const TransactionReview = ({ onTransactionComplete }) => {
   //
   // The on-screen invoice and the value reported to the merchant's integration
   // must agree, so both read this one value. It comes from the network config
-  // rather than the adapter's live on-chain symbol for two reasons: the config
-  // is what the merchant configured and reconciles against, and DjedAdapter
-  // does not expose a symbol at all, so an adapter-sourced value silently fell
-  // back to "SC" on every Djed network.
+  // rather than the adapter's live on-chain symbol, because the config is what
+  // the merchant configured and reconciles their invoices against.
   const stablecoinSymbol =
     networkSelector.getSelectedNetworkConfig()?.tokens?.stablecoin?.symbol ?? "SC";
 

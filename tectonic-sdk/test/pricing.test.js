@@ -145,15 +145,15 @@ test("ceilDiv rounds up only when there is a remainder", () => {
   assert.throws(() => ceilDiv(1n, 0n), /non-positive denominator/);
 });
 
-test("REGRESSION: a Djed-scaled (1e24) fee fails loudly instead of mispricing", () => {
-  // The likeliest porting mistake is reusing djed-sdk's SCALING_DECIMALS=24.
-  // A 1.5% fee expressed at 1e24 is 15e21, which exceeds Tectonic's D=1e18, so
-  // netFactor rejects it outright. Failing loudly here is the whole point: a
-  // silently wrong fee scale would misprice every invoice.
+test("REGRESSION: a fee scaled for 1e24 fails loudly instead of mispricing", () => {
+  // The likeliest porting mistake is carrying over a 1e24 fixed-point
+  // convention. A 1.5% fee expressed at 1e24 is 15e21, which exceeds
+  // Tectonic's D=1e18, so netFactor rejects it outright. Failing loudly here
+  // is the point: a silently wrong fee scale would misprice every invoice.
   assert.equal(D, 10n ** 18n);
-  const djedScaledFee = 15n * 10n ** 21n; // 1.5% at 1e24 scaling
+  const misScaledFee = 15n * 10n ** 21n; // 1.5% at 1e24 scaling
   assert.throws(
-    () => requiredPaymentForStablecoins(10n ** 18n, PRICE, { fee: djedScaledFee, treasuryFee: 0n }),
+    () => requiredPaymentForStablecoins(10n ** 18n, PRICE, { fee: misScaledFee, treasuryFee: 0n }),
     /consume the entire payment/
   );
   // The correctly scaled fee prices normally.
