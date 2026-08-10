@@ -130,6 +130,16 @@ test("toBaseUnits rejects precision loss and malformed input", () => {
   assert.throws(() => toBaseUnits("", 18), /not a valid decimal amount/);
 });
 
+test("toBaseUnits rejects negative amounts on every input path", () => {
+  assert.throws(() => toBaseUnits(-1, 18), /is negative/);
+  assert.throws(() => toBaseUnits("-1", 18), /is negative/);
+  assert.throws(() => toBaseUnits("-0.5", 18), /is negative/);
+  assert.throws(() => toBaseUnits(-1n, 18), /is negative/);
+  // Zero is still a legal amount.
+  assert.equal(toBaseUnits(0n, 18), 0n);
+  assert.equal(toBaseUnits("0", 18), 0n);
+});
+
 test("fromBaseUnits round-trips toBaseUnits", () => {
   for (const value of ["1", "1.5", "0.000001", "123456.789"]) {
     assert.equal(fromBaseUnits(toBaseUnits(value, 18), 18), value);

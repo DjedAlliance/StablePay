@@ -124,13 +124,25 @@ export function ceilDiv(numerator, denominator) {
  * Float math is unusable here: Number("0.1") + Number("0.2") already loses
  * precision, and an invoice amount must be exact.
  *
+ * Amounts are always non-negative: a negative invoice amount is a caller bug,
+ * so it is rejected here rather than propagating a negative bigint into the
+ * pricing math (where it would only surface much later, if at all).
+ *
  * @param {string|number|bigint} value
  * @param {number} decimals
  * @returns {bigint}
  */
 export function toBaseUnits(value, decimals) {
-  if (typeof value === "bigint") return value;
+  if (typeof value === "bigint") {
+    if (value < 0n) {
+      throw new Error(`Tectonic: "${value}" is negative; amounts must be non-negative`);
+    }
+    return value;
+  }
   const str = String(value).trim();
+  if (str.startsWith("-")) {
+    throw new Error(`Tectonic: "${value}" is negative; amounts must be non-negative`);
+  }
   if (!/^\d*\.?\d*$/.test(str) || str === "" || str === ".") {
     throw new Error(`Tectonic: "${value}" is not a valid decimal amount`);
   }
