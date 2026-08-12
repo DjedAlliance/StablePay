@@ -1,0 +1,74 @@
+{
+  "$comment": [
+    "StablePay colour tokens. The three brand hues are read directly out of",
+    "brand/logo/stablepay-logo.svg -- the logo is the source of truth, not this",
+    "file. The neutral and semantic ramps document colours already shipping in",
+    "stablepay-sdk/src/styles/.",
+    "",
+    "`contrastOnWhite` / `contrastOnInk` are WCAG 2.1 ratios. AA body text needs",
+    "4.5, AA large text (>=18.66px bold or >=24px) needs 3.0, non-text UI needs 3.0."
+  ],
+
+  "brand": {
+    "signalBlue": {
+      "hex": "#235EFE",
+      "role": "Primary. Interactive elements, links, the 'Pay' in the wordmark.",
+      "contrastOnWhite": 5.12,
+      "contrastOnInk": 3.17,
+      "usage": "Safe for body text on white."
+    },
+    "beaconYellow": {
+      "hex": "#FFC822",
+      "role": "Accent only. Highlights, illustration, the logo's lower-left disc.",
+      "contrastOnWhite": 1.55,
+      "contrastOnInk": 10.47,
+      "usage": "NEVER text on white. Use as a fill behind ink-coloured text."
+    },
+    "emberOrange": {
+      "hex": "#FD6724",
+      "role": "Accent. Warnings, the logo's lower-right disc.",
+      "contrastOnWhite": 2.94,
+      "contrastOnInk": 5.52,
+      "usage": "Not for body text on white. Large bold text or fills only."
+    }
+  },
+
+  "logoAsRendered": {
+    "$comment": "The brand hues composited over the logo's white underlay. These are what a colour-picker reports when sampling the PNG. Documented so nobody 'corrects' the palette to match a screenshot.",
+    "signalBlue70": "#658EFE",
+    "beaconYellow80": "#FFD34E",
+    "emberOrange80": "#FD8550"
+  },
+
+  "neutral": {
+    "$comment": "Cool-tinted grey ramp, already in use across the widget.",
+    "ink": { "hex": "#1A1F36", "role": "Primary text", "contrastOnWhite": 16.24 },
+    "700": { "hex": "#4F566B", "role": "Secondary text", "contrastOnWhite": 7.3 },
+    "600": { "hex": "#697386", "role": "Muted text, labels", "contrastOnWhite": 4.78 },
+    "400": { "hex": "#A3ACB9", "role": "Disabled text, placeholders", "contrastOnWhite": 2.29 },
+    "300": { "hex": "#CFD7DF", "role": "Strong borders, dividers" },
+    "200": { "hex": "#E6EBF1", "role": "Default borders" },
+    "100": { "hex": "#F7F9FC", "role": "Subtle surface fill" },
+    "0":   { "hex": "#FFFFFF", "role": "Base surface" }
+  },
+
+  "semantic": {
+    "success":       { "hex": "#15803D", "contrastOnWhite": 5.02 },
+    "successStrong": { "hex": "#14532D" },
+    "successMid":    { "hex": "#166534" },
+    "successBorder": { "hex": "#BBF7D0" },
+    "successBg":     { "hex": "#F0FDF4" },
+    "danger":        { "hex": "#DF1B41", "contrastOnWhite": 4.8 },
+    "dangerBorder":  { "hex": "#FFDCE0" },
+    "dangerBg":      { "hex": "#FFF5F5" },
+    "accent":        { "hex": "#F6941C", "contrastOnWhite": 2.29 },
+    "accentHover":   { "hex": "#FA9C2A" }
+  },
+
+  "knownIssues": [
+    {
+      "id": "two-oranges",
+      "detail": "semantic.accent (#F6941C, inherited from the Stability Nexus palette) and brand.emberOrange (#FD6724, from the logo) are two different oranges doing overlapping jobs in the same UI. Pick one before the final evaluation; #F6941C currently appears in PricingCard.css."
+    }
+  ]
+}

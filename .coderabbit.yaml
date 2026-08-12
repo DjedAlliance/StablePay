@@ -1,0 +1,270 @@
+# CodeRabbit configuration for StablePay.
+#
+# Adapted from the AOSSIE template and trimmed to this project. Tooling for
+# languages StablePay does not contain (Python, Go, PHP, Kotlin, Swift, Docker)
+# is disabled rather than left on: every enabled tool that never matches a file
+# is review latency spent for nothing, and their absence here is deliberate
+# rather than an oversight.
+#
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en
+
+early_access: true
+
+# Repos that share an interface with this one. A change to the widget's public
+# surface ripples into the merchant dashboard and the demo site, so give
+# CodeRabbit the context to notice.
+# knowledge_base:
+#   linked_repositories:
+#     - repository: "DjedAlliance/StablePay-MerchantWebsiteDemo"
+#       instructions: "Reference merchant integration; consumes stablepay-sdk's public API."
+
+chat:
+  auto_reply: true
+
+issue_enrichment:
+  labeling:
+    auto_apply_labels: true
+    labeling_instructions:
+      - label: bug
+        instructions: Issues reporting incorrect behaviour, crashes, failed transactions, wrong amounts, or wallet connection failures.
+      - label: enhancement
+        instructions: Feature requests, new network or protocol support, UX improvements, performance work.
+      - label: documentation
+        instructions: Documentation gaps, unclear setup instructions, README or CONTRIBUTING corrections.
+  planning:
+    enabled: true
+    auto_planning:
+      enabled: true
+      labels:
+        - "plan-me"
+        - "feature"
+        - "!no-plan"
+
+reviews:
+  # Assertive rather than chill: this is a payments library, and the class of
+  # bug that matters here (a misplaced scaling factor, an unchecked revert) is
+  # exactly the class that looks like a nitpick until it doesn't.
+  profile: assertive
+
+  auto_review:
+    enabled: true
+    ignore_title_keywords:
+      - "WIP"
+    drafts: false
+    base_branches:
+      - main
+
+  high_level_summary: true
+  sequence_diagrams: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  changed_files_summary: true
+  request_changes_workflow: true
+
+  pre_merge_checks:
+    description:
+      mode: warning
+    docstrings:
+      mode: off
+
+  path_filters:
+    - "!**/node_modules/**"
+    # Foundry build output and dependencies.
+    - "!tectonic-local/out/**"
+    - "!tectonic-local/cache/**"
+    - "!tectonic-local/lib/**"
+    - "!tectonic-local/broadcast/**"
+    # Vite build output of the demo app.
+    - "!stablepay-sdk/example/dist/**"
+    # Lockfiles: reviewed via the dependency instructions below, not line by line.
+    - "!**/package-lock.json"
+    # NOTE: stablepay-sdk/dist and djed-sdk/dist are deliberately NOT excluded.
+    # They are committed build artefacts that consumers resolve through
+    # `main`/`module`, so a PR touching src without rebuilding dist is a real
+    # defect and CodeRabbit should be able to see both sides of it.
+
+  tools:
+    eslint:
+      enabled: true
+    biome:
+      enabled: true
+    markdownlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    gitleaks:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout_ms: 90000
+    languagetool:
+      enabled: true
+      enabled_only: false
+      level: default
+    # Not applicable to this codebase.
+    ruff:
+      enabled: false
+    hadolint:
+      enabled: false
+    swiftlint:
+      enabled: false
+    phpstan:
+      enabled: false
+    golangci-lint:
+      enabled: false
+    detekt:
+      enabled: false
+    checkov:
+      enabled: false
+
+  labeling_instructions:
+    - label: Solidity Lang
+      instructions: Apply when the PR changes Solidity sources under tectonic-local/.
+    - label: Javascript Lang
+      instructions: Apply when the PR changes JavaScript or JSX sources.
+    - label: Documentation
+      instructions: Apply when the PR updates markdown documentation.
+    - label: Widget
+      instructions: Apply when the PR changes stablepay-sdk/src/widget or its styles.
+    - label: Protocol Adapter
+      instructions: Apply when the PR changes stablepay-sdk/src/core/adapters, tectonic-sdk, or djed-sdk.
+    - label: Brand
+      instructions: Apply when the PR changes anything under brand/.
+
+  instructions: >-
+    StablePay is a decentralized payment widget: it moves real funds by talking
+    directly to stablecoin contracts, with no intermediary server. Review with
+    that stake in mind.
+
+    - Treat arithmetic on monetary values as security-critical. Flag any change
+      to a quote, fee, or minted amount that lacks a corresponding test.
+    - Djed scales fixed-point values by 1e24; Tectonic scales by 1e18. These
+      constants are deliberately NOT shared between the two SDKs. Flag any code
+      that imports or copies a scaling constant across that boundary, and any
+      helper moved between djed-sdk and tectonic-sdk without its scale adjusted.
+      This is the highest-severity mistake possible in this repository.
+    - Flag rounding that could leave a merchant receiving less than the invoiced
+      amount. Rounding in the merchant's favour is correct here; the reverse is a bug.
+    - stablepay-sdk/dist and djed-sdk/dist are committed build artefacts. If a PR
+      changes stablepay-sdk/src or tectonic-sdk/src without a corresponding dist
+      update, say so: consumers resolve the package through dist and would not
+      receive the fix.
+    - Flag hardcoded contract addresses, chain IDs, or RPC URLs outside
+      stablepay-sdk/src/utils/config.js and contexts/chains.js.
+    - Flag any real private key or credential. Anvil's deterministic test
+      accounts (0xac0974be… and the other well-known ones) are expected and fine.
+    - Verify documentation and comments are free of spelling mistakes.
+    - Point out redundant comments that restate the code. Existing comments in
+      this repo explain reasoning and constraints; suggest matching that register
+      rather than removing explanation.
+    - Look for code duplication, and for speculative abstraction added without a
+      second caller.
+    - Suggest completions when you see a TODO or FIXME comment.
+
+  path_instructions:
+    - path: "stablepay-sdk/src/widget/**/*.jsx"
+      instructions: |
+        Widget components.
+        - Components should stay presentational. Protocol logic belongs in
+          core/adapters/. Flag any `if (protocol === ...)` branch in a component
+          as a sign the abstraction has leaked.
+        - Verify every async transaction path handles rejection, user-cancelled
+          signature, wrong network, and disconnected wallet. A payment UI that
+          silently freezes on a rejected signature is a serious defect.
+        - Amounts shown to the user must distinguish what the customer pays from
+          what the merchant receives; these differ on the native-to-stablecoin path.
+        - Check hooks dependencies are honest, and effects are narrow.
+        - Interactive elements need accessible names and keyboard operability.
+
+    - path: "stablepay-sdk/src/core/**/*.js"
+      instructions: |
+        Protocol-agnostic core and adapters.
+        - New protocols must implement ProtocolAdapter rather than special-casing
+          in Transaction.js.
+        - Adapters must validate their configuration eagerly and fail with a
+          message naming the missing field. The zero address is truthy in JS and
+          is a common placeholder: check it is rejected explicitly, not just falsy
+          values.
+        - Gas must be estimated, not hardcoded, where the execution path length
+          depends on chain state.
+
+    - path: "{tectonic-sdk,djed-sdk}/src/**/*.js"
+      instructions: |
+        Protocol clients.
+        - Confirm fixed-point scaling matches the protocol this SDK targets
+          (Tectonic 1e18, Djed 1e24) and that BigInt is used throughout — flag any
+          Number arithmetic on token amounts, which silently loses precision above
+          2^53.
+        - Confirm rounding direction favours the merchant.
+        - New public functions need unit tests in the package's test/ directory.
+
+    - path: "tectonic-local/src/**/*.sol"
+      instructions: |
+        Solidity. NOTE: this directory is a fork of
+        StabilityNexus/Tectonic-EVM-Contracts, kept deliberately diffable against
+        upstream.
+        - Do NOT suggest cosmetic renames. Renaming a public state variable or
+          constant changes the ABI, which tectonic-sdk reads. foundry.toml
+          documents the suppressed lints and the reasoning.
+        - Review for reentrancy, unchecked external calls, access-control bypass,
+          and unbounded loops that could exhaust gas.
+        - Verify explicit visibility on all state variables and functions.
+        - Verify events are emitted for every state-changing operation.
+        - Verify revert paths are explicit and tested.
+        - Flag storage-layout changes unless clearly documented.
+        - Identify gas optimisations only where they do not cost readability or safety.
+
+    - path: "tectonic-local/{test,script}/**/*.sol"
+      instructions: |
+        Foundry tests and scripts.
+        - Coverage of success paths, edge cases, and revert scenarios.
+        - Explicit assertions on state after each state-changing call.
+        - Deterministic: no reliance on implicit ordering or shared mutable state.
+        - Descriptive test names stating the behaviour under test.
+        - Tests must not be tautological.
+
+    - path: "**/*.test.{js,mjs}"
+      instructions: |
+        JavaScript tests.
+        - Tests must exercise real behaviour. A stubbed client that shares an
+          assumption with the code under test proves nothing — flag tests whose
+          fixtures encode the same scaling constant the implementation uses.
+        - Prefer amounts that would expose an off-by-a-factor error over round
+          numbers that would hide one.
+        - Async behaviour and rejection paths are covered.
+        - Test names state the property being asserted.
+
+    - path: "brand/**"
+      instructions: |
+        Brand assets.
+        - SVGs must be valid XML. Double hyphens inside XML comments are illegal
+          and break strict parsers.
+        - Raster icons are generated by brand/scripts/generate-rasters.py. Flag
+          hand-edited PNGs that no longer match the script's output.
+        - Colour values must agree with brand/color/palette.json, which is itself
+          derived from the logo.
+
+    - path: "**/{package.json,package-lock.json}"
+      instructions: |
+        Dependency manifests, possibly bot-authored.
+
+        1. Identify every version bump and flag major/minor upgrades explicitly,
+           checking release notes for each.
+        2. Detect breaking changes: removed or renamed APIs, changed signatures,
+           altered default behaviour, new required configuration.
+        3. Locate usages of the upgraded dependency in this repo and verify
+           compatibility at each call site.
+        4. Flag `file:` dependencies in any package that is published to npm.
+           stablepay-sdk is published; a `file:` reference works locally and
+           breaks for every registry consumer.
+        5. Assess risk: runtime errors, interface incompatibility, silent
+           behaviour changes, performance regressions.
+        6. Summarise required migration steps, or state explicitly that none are
+           needed.
+
+        Conclude with a risk level: Low / Medium / High, with justification.
