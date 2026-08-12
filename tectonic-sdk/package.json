@@ -10,7 +10,7 @@
   },
   "files": ["src"],
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test",
     "smoke": "node scripts/smoke-local.mjs"
   },
   "peerDependencies": {

@@ -1,0 +1,25 @@
+<!--
+  Single-colour StablePay mark.
+
+  For contexts where the tricolour cannot survive: embroidery, engraving,
+  faxed/photocopied paper, a dark UI surface, or anywhere the mark must sit in
+  a text colour.
+
+  Colour is driven by `currentColor`, so in HTML/CSS you set it from the
+  outside and never edit this file. Note that currentColor does NOT resolve
+  when the SVG is loaded through an img tag; the markup has to be inlined into
+  the document for the surrounding `color` to reach it.
+
+  The `fill` attribute on the group is the fallback for renderers that do not
+  resolve currentColor (some raster converters, older tooling).
+-->
+<svg width="582" height="549" viewBox="0 0 582 549" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StablePay">
+  <title>StablePay</title>
+  <g fill="currentColor" color="#1A1F36">
+    <!-- Drawn as one path union would be ideal, but three discs at full
+         opacity produce an identical silhouette and stay editable. -->
+    <circle cx="290.5" cy="170.5" r="170.5"/>
+    <circle cx="170.5" cy="378.5" r="170.5"/>
+    <circle cx="411.5" cy="378.5" r="170.5"/>
+  </g>
+</svg>

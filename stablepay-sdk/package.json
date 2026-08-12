@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "djed-sdk": "^1.0.2",
+    "djed-sdk": "file:../djed-sdk",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tectonic-sdk": "file:../tectonic-sdk",
