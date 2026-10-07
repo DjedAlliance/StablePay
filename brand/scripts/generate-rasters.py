@@ -7,7 +7,10 @@ files. They are derived from the same three circles that define
 brand/logo/stablepay-logo.svg, so the vector and the rasters cannot drift.
 
     pip install Pillow
-    python3 brand/scripts/generate-rasters.py
+    python3 brand/scripts/generate-rasters.py            # writes brand/favicon/
+    python3 brand/scripts/generate-rasters.py OUT_DIR    # writes elsewhere
+
+Tests: python3 -m unittest discover -s brand/scripts
 
 Why draw the circles here instead of rasterising the SVG? Because doing so
 removes the dependency on a system SVG renderer (cairosvg, rsvg, Inkscape),
@@ -82,12 +85,17 @@ def flatten(img, bg=(255, 255, 255, 255)):
     return Image.alpha_composite(base, img).convert("RGB")
 
 
-def main():
-    os.makedirs(FAV, exist_ok=True)
+def main(out_dir=FAV):
+    """Write every raster asset into `out_dir` and return their file names.
+
+    `out_dir` exists so tests can generate into a temporary directory instead
+    of overwriting the committed assets.
+    """
+    os.makedirs(out_dir, exist_ok=True)
     written = []
 
     def save(img, name):
-        img.save(os.path.join(FAV, name))
+        img.save(os.path.join(out_dir, name))
         written.append(name)
 
     # Browser tab icons. Tight padding: at 16px every pixel of margin is a
@@ -109,7 +117,7 @@ def main():
 
     # Multi-resolution .ico for legacy browsers and pinned tabs.
     render(256, pad_ratio=0.02).save(
-        os.path.join(FAV, "favicon.ico"),
+        os.path.join(out_dir, "favicon.ico"),
         sizes=[(16, 16), (32, 32), (48, 48), (64, 64)],
     )
     written.append("favicon.ico")
@@ -121,10 +129,11 @@ def main():
     save(og, "og-image.png")
 
     for name in written:
-        size = os.path.getsize(os.path.join(FAV, name))
+        size = os.path.getsize(os.path.join(out_dir, name))
         print(f"  {name:32s} {size:>8,} bytes")
-    print(f"\n{len(written)} files written to {FAV}")
+    print(f"\n{len(written)} files written to {out_dir}")
+    return written
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else FAV)

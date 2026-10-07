@@ -33,6 +33,7 @@ coverage/
 .parcel-cache/
 .vite/
 *.tsbuildinfo
+__pycache__/
 
 # --- OS cruft ---
 # .DS_Store is currently tracked at the repo root by mistake. To untrack it:

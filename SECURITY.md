@@ -45,8 +45,17 @@ Report it privately, by either route:
 
 `tectonic-local/` and the `tectonic-local` network entry in `stablepay-sdk/src/utils/config.js` exist for development against `anvil`. The entry points at `http://127.0.0.1:8545`, which no end user can reach, and its contract address is `null` until `useLocalTectonic()` is called.
 
-It is nonetheless development scaffolding shipped in a payments library. Merchants who want to be certain it can never be offered should blacklist chain `31337` in their `Config`. If you find a way to make that entry reachable in a production embed, we want to hear about it.
+The entry is marked `devOnly`, so `NetworkSelector` — and therefore every network list the widget renders — omits it unless the embedding page calls `useLocalTectonic()`. It is nonetheless development scaffolding shipped in a payments library: merchants who want a second guard can also blacklist chain `31337` in their `Config`. If you find a way to make that entry reachable in a production embed without calling `useLocalTectonic()`, we want to hear about it.
 
 ## Supported versions
 
-StablePay is pre-1.0 and under active development. Security fixes land on `main` and in the next release; there are no long-term support branches yet.
+Support is per package, because the packages are versioned independently:
+
+| Package | Current version | Supported |
+| ------- | --------------- | --------- |
+| `stablepay-sdk` | `1.0.x` | Latest `1.0.x` release only |
+| `djed-sdk` | `1.0.x` | Latest `1.0.x` release only |
+| `tectonic-sdk` | `0.1.x` (pre-1.0, unpublished; bundled into `stablepay-sdk`) | Via the `stablepay-sdk` release that bundles it |
+| `tectonic-local` | unversioned development fork | Not for deployment; reports still welcome |
+
+Security fixes land on `main` and ship in the next release of each affected package. Older releases are not patched, and there are no long-term support branches.

@@ -3,15 +3,16 @@
 > Criteria adapted from the [OpenSSF Best Practices Badge](https://github.com/coreinfrastructure/best-practices-badge)
 > (MIT / CC BY 3.0) by OpenSSF contributors. Modified for AOSSIE multi-repo template use.
 
-> **Purpose:** Covers OpenSSF Best Practices criteria that are NOT auto-detected by OpenSSF Scorecard.
-> Scorecard already handles: License, SAST tools, CI tests, Security Policy file, Branch Protection,
-> Pinned Dependencies, Signed Releases, Maintained status, and Known Vulnerabilities.
->
-> **Legend:**
-> - 🔴 MUST — Required for passing
-> - 🟡 SHOULD — Required unless documented rationale given
-> - 🔵 SUGGESTED — Optional but recommended
-> - ⚪ N/A — Marked `[~]` with justification
+**Purpose:** Covers OpenSSF Best Practices criteria that are NOT auto-detected by OpenSSF Scorecard.
+Scorecard already handles: License, SAST tools, CI tests, Security Policy file, Branch Protection,
+Pinned Dependencies, Signed Releases, Maintained status, and Known Vulnerabilities.
+
+**Legend:**
+
+- 🔴 MUST — Required for passing
+- 🟡 SHOULD — Required unless documented rationale given
+- 🔵 SUGGESTED — Optional but recommended
+- ⚪ N/A — Marked `[~]` with justification
 
 ---
 
