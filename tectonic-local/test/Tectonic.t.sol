@@ -5,6 +5,28 @@ import {Test} from "forge-std/Test.sol";
 import {Tectonic} from "../src/Tectonic.sol";
 import {MockOracle} from "../src/MockOracle.sol";
 
+/// A holder whose receive() always reverts — e.g. a contract wallet that was
+/// never meant to hold basecoin. Used to show one such holder cannot block
+/// forced redemptions (PATCH 11).
+contract RevertingHolder {
+    receive() external payable {
+        revert("RevertingHolder: no basecoin, thanks");
+    }
+
+    function claim(Tectonic t, address receiver) external {
+        t.claimUnpaidRedemption(receiver);
+    }
+}
+
+/// A holder whose receive() burns every unit of gas it is forwarded. Without a
+/// gas cap on the payout, this starves the rest of the sweep instead of
+/// reverting it outright.
+contract GasBurningHolder {
+    receive() external payable {
+        while (true) {}
+    }
+}
+
 /// @notice Tests for the local Tectonic dev fork.
 ///
 /// Tests tagged REGRESSION document a bug in the upstream draft: each of them
@@ -397,6 +419,328 @@ contract TectonicTest is Test {
         if (tectonic.ratio() < CRITICAL_RATIO) {
             assertEq(tectonic.holderCount(), 0, "stopped below critical with holders remaining");
         }
+    }
+
+    // -----------------------------------------------------------------
+    // Stability fee owed at redemption time (PATCH 10)
+    //
+    // Every test in this section warps time with the ratio depressed, so a
+    // fee is genuinely owed when the redemption runs. The earlier redemption
+    // tests never combined the two, which is how this bug went unnoticed.
+    // -----------------------------------------------------------------
+
+    /// REGRESSION (patch 10): the sweep read balanceOf(h) and redeemed that
+    /// figure, but _burn charges the fee first, so the burn ran against
+    /// `balance - fee` and reverted with ERC20InsufficientBalance. Below rcrit
+    /// a fee is always owed, so forced redemption never worked after time
+    /// passed.
+    function test_ForcedRedemptionSucceedsWhenAStabilityFeeIsOwed() public {
+        vm.prank(consumer);
+        tectonic.mint{value: 5 ether}(consumer);
+        _depressRatioBelowCritical();
+        vm.warp(block.timestamp + 1 days);
+        assertGt(tectonic.stabilityFeeAmount(consumer), 0, "a fee is genuinely owed");
+
+        uint256 bcBefore = consumer.balance;
+        tectonic.forceRedemptions(10);
+
+        assertEq(tectonic.balanceOf(consumer), 0, "position was fully redeemed");
+        assertGt(consumer.balance, bcBefore, "redeemed holder was paid out");
+        assertEq(tectonic.holderCount(), 0, "holder left the set");
+    }
+
+    /// REGRESSION (patch 10): the same failure reached through mint(), which
+    /// is StablePay's payment path. A reverting sweep reverted the payment.
+    function test_MintTriggeringASweepSucceedsWhenAStabilityFeeIsOwed() public {
+        vm.prank(consumer);
+        tectonic.mint{value: 5 ether}(consumer);
+        _depressRatioBelowCritical();
+        vm.warp(block.timestamp + 1 days);
+
+        address newBuyer = makeAddr("newBuyer");
+        vm.deal(newBuyer, 1 ether);
+        vm.prank(newBuyer);
+        tectonic.mint{value: 0.01 ether}(merchant);
+
+        assertEq(tectonic.balanceOf(consumer), 0, "prior holder was force-redeemed");
+        assertGt(tectonic.balanceOf(merchant), 0, "merchant still received the payment");
+    }
+
+    /// REGRESSION (patch 10): both equity entry points trigger the sweep too.
+    function test_EquityOperationsTriggeringASweepSucceedWhenAStabilityFeeIsOwed() public {
+        vm.prank(lp);
+        tectonic.mintEquityCoins{value: 1 ether}(lp);
+        vm.prank(consumer);
+        tectonic.mint{value: 5 ether}(consumer);
+        _depressRatioBelowCritical();
+        vm.warp(block.timestamp + 1 days);
+
+        // redeemEquityCoins sweeps after paying out.
+        uint256 ecHeld = tectonic.equityCoin().balanceOf(lp);
+        vm.prank(lp);
+        tectonic.redeemEquityCoins(ecHeld / 2, lp);
+        assertEq(tectonic.balanceOf(consumer), 0, "redeemEquityCoins swept the holder");
+
+        // mintEquityCoins sweeps before pricing.
+        address buyer2 = makeAddr("buyer2");
+        vm.deal(buyer2, 10 ether);
+        vm.prank(buyer2);
+        tectonic.mint{value: 5 ether}(buyer2);
+        _depressRatioBelowCritical();
+        vm.warp(block.timestamp + 1 days);
+
+        vm.prank(lp);
+        tectonic.mintEquityCoins{value: 0.01 ether}(lp);
+        assertEq(tectonic.balanceOf(buyer2), 0, "mintEquityCoins swept the holder");
+    }
+
+    /// REGRESSION (patch 10): redeeming the whole post-fee balance works. The
+    /// fee is settled first, so the burn runs against the balance it sized.
+    function test_RedeemingTheFullPostFeeBalanceSucceedsWhenAFeeIsOwed() public {
+        vm.prank(consumer);
+        tectonic.mint{value: 1 ether}(consumer);
+        _depressRatioBelowSafe();
+        vm.warp(block.timestamp + 10 days);
+
+        uint256 postFee = tectonic.balanceOfAfterStabilityFee(consumer);
+        assertLt(postFee, tectonic.balanceOf(consumer), "a fee is genuinely owed");
+        uint256 bcBefore = consumer.balance;
+
+        vm.prank(consumer);
+        tectonic.redeem(postFee, consumer);
+
+        assertEq(tectonic.balanceOf(consumer), 0, "everything redeemed");
+        assertGt(consumer.balance, bcBefore, "basecoin returned");
+    }
+
+    /// Documents the redeem() contract: the caller may not redeem coins the
+    /// stability fee is about to burn. Passing the pre-fee balance is an
+    /// over-redemption and reverts; callers must use the post-fee figure.
+    function test_RedeemingThePreFeeBalanceRevertsWhenAFeeIsOwed() public {
+        vm.prank(consumer);
+        tectonic.mint{value: 1 ether}(consumer);
+        _depressRatioBelowSafe();
+        vm.warp(block.timestamp + 10 days);
+
+        uint256 balance = tectonic.balanceOf(consumer);
+        uint256 postFee = tectonic.balanceOfAfterStabilityFee(consumer);
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "ERC20InsufficientBalance(address,uint256,uint256)", consumer, postFee, balance
+            )
+        );
+        vm.prank(consumer);
+        tectonic.redeem(balance, consumer);
+    }
+
+    /// A fee large enough to consume a holder's whole balance removes them from
+    /// the holder set inside the charge (swap-and-pop), before the sweep
+    /// reads their balance. The sweep must not revert, and must still honour
+    /// its guarantee: it stops only once the ratio is restored or no holders
+    /// remain. (Burning fees shrinks liabilities, so the ratio may well be
+    /// restored by the fee burns alone.)
+    function test_ForcedRedemptionHandlesAFeeThatConsumesTheWholeBalance() public {
+        address[3] memory buyers = [makeAddr("f1"), makeAddr("f2"), makeAddr("f3")];
+        for (uint256 j = 0; j < buyers.length; j++) {
+            vm.deal(buyers[j], 10 ether);
+            vm.prank(buyers[j]);
+            tectonic.mint{value: 2 ether}(buyers[j]);
+        }
+        _setRatioTarget(D + D / 1000);
+        vm.warp(block.timestamp + 20_000 days); // fee is capped at the balance
+
+        for (uint256 j = 0; j < buyers.length; j++) {
+            assertEq(
+                tectonic.stabilityFeeAmount(buyers[j]), tectonic.balanceOf(buyers[j]), "fee consumes the whole balance"
+            );
+        }
+
+        tectonic.forceRedemptions(10);
+
+        assertLt(tectonic.holderCount(), 3, "at least one holder was settled");
+        if (tectonic.ratio() < CRITICAL_RATIO) {
+            assertEq(tectonic.holderCount(), 0, "stopped below critical with holders remaining");
+        }
+        for (uint256 j = 0; j < buyers.length; j++) {
+            bool inSet = tectonic.holderIndexes(buyers[j]) != 0;
+            assertEq(inSet, tectonic.balanceOf(buyers[j]) > 0, "holder set matches balances");
+        }
+    }
+
+    /// Single-holder version: the whole position goes to the fee, the holder
+    /// leaves the set inside the charge, and the sweep ends cleanly with
+    /// nothing to redeem and nothing paid out.
+    function test_ForcedRedemptionWhenTheFeeTakesTheOnlyHolderEntirely() public {
+        vm.prank(consumer);
+        tectonic.mint{value: 2 ether}(consumer);
+        _depressRatioBelowCritical();
+        vm.warp(block.timestamp + 20_000 days);
+
+        uint256 bcBefore = consumer.balance;
+        tectonic.forceRedemptions(10);
+
+        assertEq(tectonic.balanceOf(consumer), 0, "fee consumed the position");
+        assertEq(tectonic.holderCount(), 0, "holder left the set");
+        assertEq(consumer.balance, bcBefore, "nothing left to pay out");
+    }
+
+    // -----------------------------------------------------------------
+    // Unpayable holders (PATCH 11)
+    // -----------------------------------------------------------------
+
+    /// REGRESSION (patch 11): a holder that rejects basecoin used to revert
+    /// the entire sweep, and with it every mint below rcrit. Now the sweep
+    /// burns their coins, credits the basecoin, and carries on.
+    function test_AHolderThatRejectsBasecoinCannotBlockForcedRedemptions() public {
+        RevertingHolder hostile = new RevertingHolder();
+        vm.prank(consumer);
+        tectonic.mint{value: 2 ether}(address(hostile));
+        vm.prank(consumer);
+        tectonic.mint{value: 2 ether}(consumer);
+        _setRatioTarget(D + D / 1000); // every holder is needed
+        vm.warp(block.timestamp + 1 days);
+
+        address newBuyer = makeAddr("newBuyer");
+        vm.deal(newBuyer, 1 ether);
+        vm.prank(newBuyer);
+        tectonic.mint{value: 0.01 ether}(merchant); // StablePay payment path
+
+        assertEq(tectonic.balanceOf(address(hostile)), 0, "hostile holder was redeemed");
+        assertEq(tectonic.balanceOf(consumer), 0, "the other holder was redeemed too");
+        assertGt(tectonic.balanceOf(merchant), 0, "the payment went through");
+
+        uint256 owed = tectonic.unclaimedBC(address(hostile));
+        assertGt(owed, 0, "the unpaid basecoin was credited");
+        assertEq(tectonic.totalUnclaimedBC(), owed, "credit is tracked");
+    }
+
+    /// Credited basecoin is owed to the holder, so it must not count as
+    /// reserve: otherwise ratio() is overstated and a later sweep stops early.
+    function test_CreditedBasecoinIsNotCountedAsReserve() public {
+        RevertingHolder hostile = new RevertingHolder();
+        vm.prank(consumer);
+        tectonic.mint{value: 2 ether}(address(hostile));
+        _depressRatioBelowCritical();
+
+        tectonic.forceRedemptions(10);
+
+        uint256 owed = tectonic.unclaimedBC(address(hostile));
+        assertGt(owed, 0, "credit recorded");
+        assertEq(tectonic.R(), address(tectonic).balance - owed, "R() excludes the credit");
+    }
+
+    /// The credit is withdrawable, to a receiver of the holder's choosing, so a
+    /// contract that cannot accept a push can still collect.
+    function test_AnUnpaidHolderCanClaimTheirBasecoin() public {
+        RevertingHolder hostile = new RevertingHolder();
+        vm.prank(consumer);
+        tectonic.mint{value: 2 ether}(address(hostile));
+        _depressRatioBelowCritical();
+        tectonic.forceRedemptions(10);
+
+        uint256 owed = tectonic.unclaimedBC(address(hostile));
+        address collector = makeAddr("collector");
+        uint256 rBefore = tectonic.R();
+
+        hostile.claim(tectonic, collector);
+
+        assertEq(collector.balance, owed, "claimed in full");
+        assertEq(tectonic.unclaimedBC(address(hostile)), 0, "credit cleared");
+        assertEq(tectonic.totalUnclaimedBC(), 0, "total cleared");
+        assertEq(tectonic.R(), rBefore, "claiming does not touch the reserve");
+
+        vm.expectRevert("Tectonic: nothing to claim");
+        hostile.claim(tectonic, collector);
+    }
+
+    /// REGRESSION (patch 11): a holder that burns all forwarded gas used to
+    /// starve the sweep. The payout's gas is capped, so the sweep completes.
+    function test_AGasBurningHolderCannotStarveForcedRedemptions() public {
+        GasBurningHolder burner = new GasBurningHolder();
+        vm.prank(consumer);
+        tectonic.mint{value: 2 ether}(address(burner));
+        vm.prank(consumer);
+        tectonic.mint{value: 2 ether}(consumer);
+        _setRatioTarget(D + D / 1000);
+
+        tectonic.forceRedemptions{gas: 2_000_000}(10);
+
+        assertEq(tectonic.balanceOf(address(burner)), 0, "burner was redeemed");
+        assertEq(tectonic.balanceOf(consumer), 0, "the sweep continued past the burner");
+        assertGt(tectonic.unclaimedBC(address(burner)), 0, "burner was credited");
+    }
+
+    /// Voluntary redemption keeps the strict send: the caller chose the
+    /// receiver, so a receiver that rejects basecoin fails the caller's own
+    /// transaction rather than silently leaving the coins in limbo.
+    function test_VoluntaryRedeemToARejectingReceiverReverts() public {
+        RevertingHolder rejecting = new RevertingHolder();
+        vm.prank(consumer);
+        tectonic.mint{value: 1 ether}(consumer);
+        uint256 balance = tectonic.balanceOf(consumer);
+
+        vm.expectRevert("Transfer failed.");
+        vm.prank(consumer);
+        tectonic.redeem(balance, address(rejecting));
+    }
+
+    // -----------------------------------------------------------------
+    // Exhausted equity (PATCH 12)
+    // -----------------------------------------------------------------
+
+    /// REGRESSION (patch 12): with E() == 0, ecPrice() is 0. redeemEquityCoins
+    /// used to burn the caller's coins and pay nothing, without reverting.
+    function test_RedeemingEquityWhenEquityIsExhaustedRevertsInsteadOfBurningForNothing() public {
+        Tectonic t = _deployWithExhaustedEquity();
+        uint256 held = t.equityCoin().balanceOf(lp);
+
+        vm.expectRevert("Tectonic: equity coins would be redeemed for nothing");
+        vm.prank(lp);
+        t.redeemEquityCoins(held, lp);
+
+        assertEq(t.equityCoin().balanceOf(lp), held, "coins were not taken");
+    }
+
+    /// REGRESSION (patch 12): mintEquityCoins divided by ecPrice() and panicked
+    /// with 0x12. It now fails with a reason. The amount is a multiple of 2000
+    /// wei so the payment itself keeps E() at exactly 0, and there are more
+    /// holders than one sweep may redeem, so the sweep cannot restore E() on
+    /// the way in either.
+    function test_MintingEquityWhenEquityIsExhaustedRevertsWithAReason() public {
+        Tectonic t = _deployWithExhaustedEquity();
+
+        vm.expectRevert("Tectonic: equity is exhausted, equity coins cannot be priced");
+        vm.prank(lp);
+        t.mintEquityCoins{value: 2000}(lp);
+    }
+
+    /// Fee-free deployment whose reserve is exactly committed to liabilities.
+    /// Fees are zero so that redemptions are exactly proportional (no fee
+    /// residue rebuilds equity), and the amounts make R * D divisible by the
+    /// supply so no flooring dust is left behind either.
+    function _deployWithExhaustedEquity() internal returns (Tectonic t) {
+        MockOracle o = new MockOracle(INITIAL_PRICE);
+        t = new Tectonic(address(o), treasury, 0, 0, CRITICAL_RATIO, SAFE_RATIO);
+
+        vm.prank(lp);
+        t.mintEquityCoins{value: 1 ether}(lp); // 1e18 equity coins at price D
+
+        // 125 holders x 0.008 ether = 1 ether of stablecoins: more holders
+        // than numRedemptionIterations, and the ratio stays ~2 throughout so
+        // no mint triggers a sweep.
+        for (uint256 j = 0; j < 125; j++) {
+            address h = address(uint160(0x10000 + j));
+            vm.deal(h, 1 ether);
+            vm.prank(h);
+            t.mint{value: 0.008 ether}(h);
+        }
+        assertEq(t.holderCount(), 125, "setup: every holder is still in the set");
+
+        // R = 2e18, supply = 2e21, so R * D / supply = 1e15 exactly. With the
+        // target price above that, the cap binds and L() == R().
+        o.setPrice(2e15);
+        assertEq(t.E(), 0, "setup: equity is exhausted");
+        assertEq(t.ecPrice(), 0, "setup: equity coins are priced at zero");
     }
 
     // -----------------------------------------------------------------

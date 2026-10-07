@@ -26,8 +26,8 @@ fs_permissions = [{ access = "read-write", path = "./deployments" }]
 #
 # This project is a FORK. Its naming deliberately matches
 # StabilityNexus/Tectonic-EVM-Contracts so that `diff` against upstream shows
-# only the eight intentional patches, and so that fixes can be handed back as
-# clean PRs.
+# only the intentional patches (each marked `PATCH n` in src/Tectonic.sol), and
+# so that fixes can be handed back as clean PRs.
 #
 # The suppressed lints all want cosmetic renames of forked code. Two concrete
 # reasons not to apply them:
@@ -36,7 +36,7 @@ fs_permissions = [{ access = "read-write", path = "./deployments" }]
 #      `criticalReserveRatio` into `CRITICAL_RESERVE_RATIO` renames its
 #      auto-generated getter, which breaks tectonic-sdk's TectonicABI.json and
 #      every SDK call that reads it.
-#   2. Renaming `amountSC` -> `amountSc` throughout would bury the seven real
+#   2. Renaming `amountSC` -> `amountSc` throughout would bury the real
 #      patches in hundreds of cosmetic diff lines.
 #
 # If upstream later adopts these conventions, drop this block and follow suit.
