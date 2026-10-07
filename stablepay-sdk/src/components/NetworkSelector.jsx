@@ -2,7 +2,10 @@ import React from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
 
 const NetworkSelector = () => {
-  const { selectNetwork, availableNetworks } = useNetwork();
+  // The context exposes the selector, not a separate network list; reading the
+  // list from it keeps this widget on the same filtered set as NetworkDropdown.
+  const { selectNetwork, networkSelector } = useNetwork();
+  const availableNetworks = networkSelector?.availableNetworks ?? {};
 
   const handleNetworkChange = (event) => {
     selectNetwork(event.target.value);

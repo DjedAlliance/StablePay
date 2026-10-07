@@ -80,11 +80,15 @@ export const networksConfig = {
   // tectonic-local/script/DeployLocal.s.sol, which also writes
   // tectonic-local/deployments/local.json — or call useLocalTectonic() below.
   //
-  // Keep this out of production builds, or have merchants blacklist chain
-  // 31337 in their Config.
+  // `devOnly` keeps it out of every network list (NetworkSelector, and so
+  // both network widgets) until useLocalTectonic() opts in. A merchant who
+  // never calls it never offers customers an RPC on their own localhost,
+  // whether or not they remembered to blacklist chain 31337.
   // ---------------------------------------------------------------------
   'tectonic-local': {
     protocol: 'tectonic',
+    devOnly: true,
+    enabled: false,
     uri: 'http://127.0.0.1:8545',
     chainId: 31337,
     // null, not the zero address: the zero address is truthy in JS, so a
@@ -111,7 +115,9 @@ export const networksConfig = {
 
 /**
  * Point the widget at a freshly deployed local Tectonic without hand-editing
- * the same address in two places.
+ * the same address in two places. This is also the opt-in that makes the
+ * `devOnly` tectonic-local entry visible, so call it BEFORE constructing the
+ * NetworkSelector: the selector snapshots the available networks.
  *
  *   import StablePay from 'stablepay-sdk';
  *   StablePay.useLocalTectonic('0xabc...');
@@ -125,5 +131,16 @@ export function useLocalTectonic(address) {
   }
   networksConfig['tectonic-local'].tectonicAddress = address;
   networksConfig['tectonic-local'].tokens.stablecoin.address = address;
+  networksConfig['tectonic-local'].enabled = true;
   return networksConfig['tectonic-local'];
+}
+
+/**
+ * Whether a network may be offered to users. Development-only entries are
+ * hidden until explicitly enabled (see useLocalTectonic).
+ * @param {object} networkConfig
+ * @returns {boolean}
+ */
+export function isNetworkOffered(networkConfig) {
+  return !networkConfig.devOnly || networkConfig.enabled === true;
 }
