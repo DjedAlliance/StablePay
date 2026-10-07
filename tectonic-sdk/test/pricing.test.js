@@ -166,6 +166,14 @@ test("REGRESSION: a Djed-scaled (1e24) fee fails loudly instead of mispricing", 
     () => requiredPaymentForStablecoins(10n ** 18n, PRICE, { fee: djedScaledFee, treasuryFee: 0n }),
     /consume the entire payment/
   );
+  // The other two pricing functions used to skip the guard and return 0n or a
+  // negative bigint for the same input. Every consumer of the fee scale must
+  // reject it.
+  const badFees = { fee: djedScaledFee, treasuryFee: 0n };
+  assert.throws(() => stablecoinsForPayment(10n ** 18n, PRICE, badFees), /consume the entire payment/);
+  assert.throws(() => payoutForRedemption(10n ** 18n, PRICE, badFees), /consume the entire payment/);
   // The correctly scaled fee prices normally.
   assert.ok(requiredPaymentForStablecoins(10n ** 18n, PRICE, FEES) > 0n);
+  assert.ok(stablecoinsForPayment(10n ** 18n, PRICE, FEES) > 0n);
+  assert.ok(payoutForRedemption(10n ** 18n, PRICE, FEES) > 0n);
 });
