@@ -12,12 +12,20 @@ export default {
     {
       format: "es",
       file: "dist/esm/index.js",
+      // src/index.js intentionally provides both a default export (the
+      // established `import StablePay from 'stablepay-sdk'` API) and named
+      // exports (tree-shakeable, and how tests reach the adapters).
+      // Declaring "named" silences Rollup's mixed-exports warning; the emitted
+      // UMD global keeps every member attached directly to window.StablePay,
+      // so existing script-tag consumers are unaffected.
+      exports: "named",
       assetFileNames: "assets/[name][extname]",
     },
     {
       format: "umd",
       name: "StablePay",
       file: "dist/umd/index.js",
+      exports: "named",
       globals: {
         "djed-sdk": "DjedSdk",
         web3: "Web3",

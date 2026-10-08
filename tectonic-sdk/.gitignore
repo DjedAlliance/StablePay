@@ -1,0 +1,34 @@
+# tectonic-sdk ships source, not a build.
+#
+# There is no dist/ here on purpose: the package's `main` and `exports` point
+# straight at src/, and the ABI is a .js module rather than JSON so it needs no
+# bundler or import attributes. Nothing to ignore on the build side.
+
+# --- Dependencies ---
+node_modules/
+
+# --- Environment ---
+.env
+.env.*
+!.env.example
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# --- Test and coverage output ---
+coverage/
+.nyc_output/
+
+# --- OS cruft ---
+.DS_Store
+._*
+
+# --- Editors ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~

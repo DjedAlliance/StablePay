@@ -24,20 +24,19 @@ const TokenDropdown = () => {
     try {
       if (selectToken(newValue)) {
         const networkConfig = networkSelector.getSelectedNetworkConfig();
-        const transaction = new Transaction(
-          networkConfig.uri,
-          networkConfig.djedAddress
-        );
+        // Pass the whole config: the adapter layer selects the protocol from
+        // it. The old two-argument form assumed Djed and passed
+        // `networkConfig.djedAddress`, which is undefined on a Tectonic
+        // network and threw before any RPC call was made.
+        const transaction = new Transaction(networkConfig);
         await transaction.init();
 
         const tokenAmount = networkSelector.getTokenAmount(newValue);
         const blockchainDetails = transaction.getBlockchainDetails();
 
-        let tradeData = null;
+        let quote = null;
         if (newValue === "native") {
-          tradeData = await transaction.handleTradeDataBuySc(
-            String(tokenAmount)
-          );
+          quote = await transaction.quoteNativePayment(String(tokenAmount));
         }
 
         setTransactionDetails({
@@ -46,11 +45,10 @@ const TokenDropdown = () => {
           tokenSymbol: tokenSelector.getSelectedToken().symbol,
           amount: tokenAmount,
           receivingAddress: networkSelector.getReceivingAddress(),
-          djedContractAddress: networkConfig.djedAddress,
           isDirectTransfer:
             tokenSelector.getSelectedToken().isDirectTransfer || false,
           isNativeToken: tokenSelector.getSelectedToken().isNative || false,
-          tradeAmount: tradeData ? tradeData.amount : null,
+          tradeAmount: quote ? quote.requiredBCFormatted : null,
           ...blockchainDetails,
         });
       }

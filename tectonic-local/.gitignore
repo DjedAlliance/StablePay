@@ -1,0 +1,39 @@
+# Foundry project: local Tectonic dev fork.
+
+# --- Foundry build output ---
+cache/
+out/
+broadcast/
+
+# --- Foundry dependencies (installed via `forge install`) ---
+# Not submodules here, so the directory is ignored outright. Reinstall with:
+#   forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts --no-git
+lib/
+
+# --- Deployment manifests ---
+# Generated per-machine by script/DeployLocal.s.sol and specific to one anvil
+# instance, so they are not shared. The directory itself is kept, because
+# vm.writeFile cannot create it and git does not track empty directories.
+deployments/*.json
+!deployments/.gitkeep
+
+# --- Environment and secrets ---
+# Even for a local chain: private keys never belong in version control.
+.env
+.env.*
+!.env.example
+
+# --- Coverage ---
+lcov.info
+coverage/
+
+# --- OS cruft ---
+.DS_Store
+._*
+
+# --- Editors ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
