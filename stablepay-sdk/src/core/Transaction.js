@@ -127,11 +127,25 @@ export class Transaction {
   }
 
   _decorateConnectionError(error) {
+    // EIP-1193 4001: the user rejected the request in their wallet. The
+    // endpoint is fine, so pointing them at network status would mislead.
+    // Returned unchanged: callers (e.g. WalletContext) key on `code === 4001`.
+    if (error?.code === 4001) return error;
+
+    // EIP-1474 -32005: limit exceeded. The endpoint is reachable but is
+    // throttling us, which calls for waiting or another RPC, not a DNS check.
+    if (error?.code === -32005) {
+      return new Error(
+        `The RPC endpoint ${this.networkUri} is rate limiting requests.\n\n` +
+          `Wait a few moments and try again, or configure a different RPC ` +
+          `endpoint for this network.`,
+        { cause: error }
+      );
+    }
+
     const isConnectionError =
-      error.code === -32603 ||
-      error.code === 4001 ||
-      error.code === -32005 ||
-      (error.message &&
+      error?.code === -32603 ||
+      (error?.message &&
         (error.message.includes("CONNECTION ERROR") ||
           error.message.includes("ERR_NAME_NOT_RESOLVED")));
 
@@ -143,7 +157,8 @@ export class Transaction {
         `- The RPC endpoint may be temporarily unavailable\n` +
         `- DNS resolution issue (check your internet connection)\n` +
         `- Network firewall blocking the connection\n\n` +
-        `Please try again in a few moments or check the network status.`
+        `Please try again in a few moments or check the network status.`,
+      { cause: error }
     );
   }
 }

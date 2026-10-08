@@ -76,6 +76,34 @@ pragma solidity ^0.8.0;
 //      robustness fix rather than a live defect. Fix: only advance when the
 //      slot was not backfilled.
 //
+//  10. A stability fee is burned inside _update before the outer burn or
+//      transfer moves its amount, so any amount sized from the pre-fee
+//      balance reverts with ERC20InsufficientBalance once a fee is owed.
+//      _forceRedemptions read balanceOf(h) and then redeemed exactly that,
+//      so the sweep — and with it every mint / mintEquityCoins /
+//      redeemEquityCoins that triggers it — reverted whenever the protocol
+//      was below rcrit (where a fee is always owed) and any time had passed.
+//      redeem(balanceOf(msg.sender), ...) failed the same way.
+//      Fix: settle the fee before sizing. _redeem charges the fee before it
+//      prices the redemption, and the sweep charges each holder before it
+//      reads their balance. External callers of redeem() must pass at most
+//      balanceOfAfterStabilityFee(msg.sender).
+//
+//  11. A forced redemption paid the holder with a reverting send(). Holders
+//      are arbitrary addresses, so one contract whose receive() reverts (or
+//      burns the forwarded gas) made every sweep revert — and with it every
+//      mint / mintEquityCoins / redeemEquityCoins below rcrit, i.e. the
+//      protocol could not recover its ratio.
+//      Fix: forced payouts use a gas-capped call that cannot revert the
+//      sweep. A payout that fails is credited to unclaimedBC[holder] and
+//      withdrawn later via claimUnpaidRedemption(). Credited basecoin belongs
+//      to the holder, not the protocol, so R() excludes totalUnclaimedBC.
+//
+//  12. ecPrice() is 0 when E() == 0 (reserve fully committed to
+//      liabilities). mintEquityCoins then divided by zero (panic 0x12) and
+//      redeemEquityCoins burned the caller's equity coins for 0 basecoin.
+//      Fix: explicit reverts in both paths, same treatment as PATCH 6.
+//
 //   Minor additions by the fork (not bug fixes): holderCount() view for tests
 //   and SDK use; send() no-ops on zero amount to avoid pointless calls to the
 //   treasury when treasuryFee == 0; equity coin symbol "RC" -> "EC".
@@ -122,6 +150,19 @@ contract Tectonic is ERC20, ReentrancyGuard {
     mapping(address => uint256) public holderIndexes;
     mapping(address => uint256) public timestamp; // last chargeStabilityFee time per address
 
+    /// PATCH 11: basecoin owed to holders whose forced-redemption payout
+    /// failed. Held by the contract on their behalf, never part of the reserve.
+    mapping(address => uint256) public unclaimedBC;
+    uint256 public totalUnclaimedBC;
+
+    /// PATCH 11: gas forwarded to a holder receiving a forced-redemption
+    /// payout. Enough for an EOA or a typical smart-contract wallet's
+    /// receive(); a holder needing more is credited and claims it themselves
+    /// with as much gas as they like. Bounding it stops a holder from burning
+    /// the sweep's gas, and the assembly call in _payOrCredit stops them from
+    /// returning a huge revert payload for the caller to copy.
+    uint256 public constant forcedPayoutGasLimit = 50_000;
+
     function updateHolder(address a) internal {
         if (holderIndexes[a] == 0 && balanceOf(a) > 0) {
             // add new holder
@@ -153,6 +194,8 @@ contract Tectonic is ERC20, ReentrancyGuard {
         uint256 totalRedeemedAmountSC, uint256 initialRatio, uint256 finalRatio, address indexed origin, uint256 refund
     );
     event ChargedStabilityFee(address indexed holder, uint256 feeAmount);
+    event ForcedPayoutDeferred(address indexed holder, uint256 amountBC);
+    event ClaimedUnpaidRedemption(address indexed holder, address indexed receiver, uint256 amountBC);
     event BatchChargedStabilityFee(uint256 start, uint256 iterations, uint256 totalFeeAmount, address indexed origin, uint256 refund);
 
     constructor(
@@ -191,8 +234,14 @@ contract Tectonic is ERC20, ReentrancyGuard {
     // Reserve, Liabilities, Equity (in wei) and Reserve Ratio
     // ---------------------------------------------------------------------
 
+    /// PATCH 11: basecoin credited to holders by a failed forced payout is
+    /// owed to them, so it is not reserve. Counting it would overstate R(),
+    /// E() and ratio(), and let the next sweep stop before the ratio is
+    /// genuinely restored. The subtraction cannot underflow: a credit is only
+    /// recorded for basecoin that stayed in the contract, and only leaves it
+    /// when the credit is cleared.
     function R() public view returns (uint256) {
-        return address(this).balance;
+        return address(this).balance - totalUnclaimedBC;
     }
 
     function L() public view returns (uint256) {
@@ -250,6 +299,12 @@ contract Tectonic is ERC20, ReentrancyGuard {
         emit Minted(msg.sender, receiver, amountSC, msg.value);
     }
 
+    /// @notice Redeem `amountSC` stablecoins for basecoin.
+    /// @dev Any stability fee owed is burned first (PATCH 10), so `amountSC`
+    ///      must not exceed balanceOfAfterStabilityFee(msg.sender) — passing
+    ///      balanceOf(msg.sender) reverts with ERC20InsufficientBalance while a
+    ///      fee is owed. Read the post-fee figure in the same block if
+    ///      redeeming everything; the fee keeps accruing with time.
     function redeem(uint256 amountSC, address receiver) external nonReentrant {
         _redeem(amountSC, msg.sender, receiver);
     }
@@ -257,12 +312,27 @@ contract Tectonic is ERC20, ReentrancyGuard {
     /// PATCH 2: `nonReentrant` removed. Every caller is already guarded; the
     /// nested acquisition made redeem() and all forced redemptions revert.
     function _redeem(uint256 amountSC, address from, address receiver) internal {
-        uint256 scP = scPriceRedeem();
-        uint256 value = (amountSC * scP) / D;
-        uint256 amountBC = deductFees(value);
-        _burn(from, amountSC);
+        uint256 amountBC = _burnForRedemption(amountSC, from);
         send(receiver, amountBC);
         emit Redeemed(from, receiver, amountSC, amountBC);
+    }
+
+    /// PATCH 10: settle `from`'s stability fee BEFORE pricing and burning.
+    ///
+    /// The fee is burned inside _update ahead of the outer burn, so without
+    /// this the burn of `amountSC` runs against `balance - fee` and reverts.
+    /// Charging here also means the redemption is priced off the post-fee
+    /// supply, i.e. the scPriceRedeem() the burn actually executes against.
+    /// The charge that _burn's _update performs afterwards sees t = 0 and is a
+    /// no-op.
+    ///
+    /// Returns the basecoin owed to the redeemer; the caller pays it.
+    function _burnForRedemption(uint256 amountSC, address from) internal returns (uint256 amountBC) {
+        chargeStabilityFee(from);
+        uint256 scP = scPriceRedeem();
+        uint256 value = (amountSC * scP) / D;
+        amountBC = deductFees(value);
+        _burn(from, amountSC);
     }
 
     /// PATCH 2: external guarded entry point; internal logic split out so that
@@ -287,11 +357,22 @@ contract Tectonic is ERC20, ReentrancyGuard {
             if (i >= holders.length) i = 1;
 
             address h = holders[i];
-            uint256 b = balanceOf(h);
             uint256 lengthBefore = holders.length;
 
+            // PATCH 10: settle the fee before reading the balance to redeem.
+            // Reading first and redeeming that figure reverts whenever a fee
+            // is owed, which below rcrit is always. If the fee consumes the
+            // whole balance the holder leaves the set here (swap-and-pop),
+            // which the lengthBefore check below already accounts for.
+            chargeStabilityFee(h);
+            uint256 b = balanceOf(h);
+
             if (b > 0) {
-                _redeem(b, h, h);
+                uint256 amountBC = _burnForRedemption(b, h);
+                // PATCH 11: an unpayable holder is credited, not allowed to
+                // revert the sweep that every under-reserved mint relies on.
+                _payOrCredit(h, amountBC);
+                emit Redeemed(h, h, b, amountBC);
                 totalRedeemedAmountSC += b;
             }
             iterations++;
@@ -390,6 +471,11 @@ contract Tectonic is ERC20, ReentrancyGuard {
             _forceRedemptions(numRedemptionIterations); // PATCH 2
         }
         uint256 rcBP = ecPrice();
+        // PATCH 12: ecPrice() is 0 when E() == 0; the division below would
+        // panic with 0x12. Fail with a reason instead. Pricing new equity
+        // against worthless existing equity is an upstream design question
+        // (Djed answers it with a minimum price), not something to guess here.
+        require(rcBP > 0, "Tectonic: equity is exhausted, equity coins cannot be priced");
         uint256 amountBC = deductFees(msg.value);
         uint256 amountRC = (amountBC * D) / rcBP;
         equityCoin.mint(receiver, amountRC);
@@ -399,6 +485,10 @@ contract Tectonic is ERC20, ReentrancyGuard {
     function redeemEquityCoins(uint256 amountRC, address receiver) external nonReentrant {
         require(equityCoin.balanceOf(msg.sender) >= amountRC, "redeemEquityCoin: insufficient balance");
         uint256 value = (amountRC * ecPrice()) / D;
+        // PATCH 12: with ecPrice() == 0 (E() == 0), or an amount too small to
+        // be worth a wei, the coins below would be burned for nothing and the
+        // call would still succeed. Refuse rather than silently take them.
+        require(value > 0, "Tectonic: equity coins would be redeemed for nothing");
         uint256 amountBC = deductFees(value);
         equityCoin.burn(msg.sender, amountRC);
         send(receiver, amountBC);
@@ -432,6 +522,8 @@ contract Tectonic is ERC20, ReentrancyGuard {
     }
 
     /// PATCH 5: was `internal`; made public so the SDK can price equity coins.
+    /// Returns 0 when E() == 0 (the reserve is fully committed to
+    /// liabilities); every caller must handle that (PATCH 6, PATCH 12).
     function ecPrice() public view returns (uint256) {
         uint256 sRC = equityCoin.totalSupply();
         return sRC == 0 ? D : (E() * D) / sRC;
@@ -441,6 +533,37 @@ contract Tectonic is ERC20, ReentrancyGuard {
         if (amount == 0) return;
         (bool success,) = payable(receiver).call{value: amount}("");
         require(success, "Transfer failed.");
+    }
+
+    /// PATCH 11: pay a force-redeemed holder without letting them revert or
+    /// starve the sweep. Gas is capped at forcedPayoutGasLimit and no return
+    /// data is copied. On failure the basecoin stays in the contract as a
+    /// credit the holder withdraws with claimUnpaidRedemption().
+    function _payOrCredit(address holder, uint256 amount) internal {
+        if (amount == 0) return;
+        bool success;
+        uint256 gasLimit = forcedPayoutGasLimit;
+        assembly ("memory-safe") {
+            success := call(gasLimit, holder, amount, 0, 0, 0, 0)
+        }
+        if (!success) {
+            unclaimedBC[holder] += amount;
+            totalUnclaimedBC += amount;
+            emit ForcedPayoutDeferred(holder, amount);
+        }
+    }
+
+    /// @notice Withdraw basecoin from a forced redemption whose payout failed.
+    /// @dev PATCH 11. Pull-based, with the caller choosing the receiver and
+    ///      forwarding all gas, so a holder contract that cannot accept a push
+    ///      can still collect to another address. Effects before the transfer.
+    function claimUnpaidRedemption(address receiver) external nonReentrant {
+        uint256 amount = unclaimedBC[msg.sender];
+        require(amount > 0, "Tectonic: nothing to claim");
+        unclaimedBC[msg.sender] = 0;
+        totalUnclaimedBC -= amount;
+        send(receiver, amount);
+        emit ClaimedUnpaidRedemption(msg.sender, receiver, amount);
     }
 
     /// Charge stability fees before all token transfers, mints and burns, and

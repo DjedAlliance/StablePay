@@ -44,6 +44,21 @@
   <img src="https://img.shields.io/youtube/channel/subscribers/UCZOG4YhFQdlGaLugr_e5BKw?style=flat&logo=youtube&logoColor=white&logoSize=auto&labelColor=FF0000&color=FF0000" alt="Youtube Badge"></a>
 </p>
 
+<!-- Project health badges -->
+<p align="center">
+<a href="https://scorecard.dev/viewer/?uri=github.com/DjedAlliance/StablePay">
+  <img src="https://api.scorecard.dev/projects/github.com/DjedAlliance/StablePay/badge" alt="OpenSSF Scorecard"></a>
+&nbsp;&nbsp;
+<a href="BestPracticesChecklist.md">
+  <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FDjedAlliance%2FStablePay%2Fmain%2Fchecklist-status.json&query=%24.percent&suffix=%25&label=Best%20Practices&logo=openssf" alt="Best Practices"></a>
+&nbsp;&nbsp;
+<a href="LICENSE">
+  <img src="https://img.shields.io/badge/License-MIT-D27728" alt="License: MIT"></a>
+&nbsp;&nbsp;
+<a href="https://github.com/gitleaks/gitleaks">
+  <img src="https://img.shields.io/badge/protected%20by-gitleaks-blue" alt="Protected by Gitleaks"></a>
+</p>
+
 &nbsp;
 <!-- Project core values and objective -->
 <p align="center">
@@ -97,7 +112,123 @@ The main files of the StablePay widget and their purposes are:
 
 ## **Using the StablePay Widget**
 
-A simple example merchant website with the StablePay widget embedded is available in the [StablePay-MerchantWebsiteDemo](https://github.com/DjedAlliance/StablePay-MerchantWebsiteDemo).
+A simple example merchant website with the StablePay widget embedded is available in the [StablePay-MerchantWebsiteDemo](https://github.com/DjedAlliance/StablePay-MerchantWebsiteDemo). A second demo lives in this repository at [`stablepay-sdk/example`](stablepay-sdk/example) and is the fastest way to see the widget running locally.
+
+
+## **Building, Testing and Running**
+
+### Prerequisites
+
+* **Node.js 18+** and npm
+* **[Foundry](https://book.getfoundry.sh/getting-started/installation)** (`forge`, `anvil`, `cast`) — only needed for the contracts and the local Tectonic chain
+* A browser wallet such as MetaMask, to exercise the widget
+
+### Install
+
+This is a multi-package repository with no workspace root, so dependencies are installed per package:
+
+```bash
+git clone https://github.com/DjedAlliance/StablePay.git
+cd StablePay
+
+cd stablepay-sdk         && npm install && cd ..
+cd tectonic-sdk          && npm install && cd ..
+cd stablepay-sdk/example && npm install && cd ../..
+```
+
+### Build
+
+```bash
+cd stablepay-sdk && npm run build     # Rollup -> dist/esm, dist/umd
+cd tectonic-local && forge build      # Solidity
+```
+
+`stablepay-sdk/dist/` is committed to the repository, because the example app and merchant integrations resolve the package through `main`/`module`, which point there. **Any change to `stablepay-sdk/src` or `tectonic-sdk/src` needs a rebuild before it takes effect**, and the rebuilt output should be committed with the change.
+
+### Test
+
+```bash
+cd tectonic-sdk   && npm test         # 29 unit tests (node:test)
+cd tectonic-local && forge test       # Solidity, incl. 512-run fuzzing
+cd stablepay-sdk/example && npm run lint
+```
+
+### Run the demo site
+
+```bash
+cd stablepay-sdk/example
+npm run dev
+```
+
+Then open the URL Vite prints. The demo offers the live Djed networks by default.
+
+While iterating on the SDK, alias the package to its source to skip the rebuild loop:
+
+```bash
+VITE_SDK_SRC=1 npm run dev
+```
+
+Do a final run *without* that flag before opening a PR, to confirm the bundled build works too.
+
+### Run against a local Tectonic chain
+
+Tectonic support is in development and is exercised against a local chain rather than a live deployment.
+
+```bash
+# terminal 1 — a local chain
+anvil
+
+# terminal 2 — deploy Tectonic + a mock oracle, seeded with a reserve
+cd tectonic-local
+forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+# verify the SDK's off-chain pricing agrees with the chain
+cd ../tectonic-sdk && npm run smoke
+
+# terminal 3 — the demo, pointed at the local deployment
+cd stablepay-sdk/example
+VITE_TECTONIC_ADDRESS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 npm run dev
+```
+
+The deploy script prints the deployed addresses and writes `tectonic-local/deployments/local.json`. On a freshly started `anvil` the addresses are deterministic and match the value above.
+
+`npm run smoke` is the check the unit tests cannot make: it drives the real contract on a real chain and asserts the property the whole integration rests on — that a merchant invoiced for N stablecoins receives at least N.
+
+> The private keys above are anvil's public, deterministic test accounts. They are safe precisely because everyone has them. Never use them on a real network.
+
+
+## **Contributing**
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first — in particular, all project communication happens in the [#stablepay Discord channel](https://discord.com/channels/995968619034984528/1283781801751351418), and PRs without a Discord update may sit unreviewed.
+
+* [CONTRIBUTING.md](CONTRIBUTING.md) — how to set up, develop, test and submit a change
+* [AGENTS.md](AGENTS.md) — instructions for AI coding agents working in this repository
+* [MAINTAINERS.md](MAINTAINERS.md) — who maintains and mentors this project
+* [BestPracticesChecklist.md](BestPracticesChecklist.md) — project health against the OpenSSF criteria
+* [Report a bug](https://github.com/DjedAlliance/StablePay/issues) — via GitHub Issues
+
+
+## **Security**
+
+Found a vulnerability? **Do not open a public issue.** See [SECURITY.md](SECURITY.md) for private reporting routes and what to expect.
+
+
+## **License**
+
+Released under the MIT License. See [LICENSE](LICENSE).
+
+
+## **Brand**
+
+The StablePay visual identity — logo, favicons and icons, colour palette and typography — lives in the [brand folder](brand), documented in [brand/Brand.md](brand/Brand.md).
+
+* [brand/logo/](brand/logo) — primary mark, single-colour mark, and horizontal wordmark, all SVG.
+* [brand/favicon/](brand/favicon) — favicons, PWA icons, and the social preview image.
+* [brand/color/](brand/color) — palette as a swatch sheet, CSS custom properties, and JSON tokens.
+* [brand/typography/](brand/typography) — type specimen, font stacks, and the type scale.
+
+Raster icons are generated from the logo geometry by `brand/scripts/generate-rasters.py`, so they cannot drift from the vector source.
 
 
 

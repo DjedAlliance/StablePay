@@ -1,0 +1,118 @@
+/*
+ * StablePay typography tokens.
+ *
+ * ---------------------------------------------------------------------------
+ * KNOWN BUG THIS FILE EXISTS TO FIX
+ *
+ * stablepay-sdk/src/styles/*.css declares `font-family: "Inter", sans-serif`
+ * in 14 places, but nothing in the repo ever loads Inter -- there is no
+ * @font-face, no <link> to a font CDN, no @fontsource import. Every one of
+ * those rules currently falls through to the generic `sans-serif`, so the
+ * shipped widget is not rendering in Inter on any machine that does not
+ * happen to have it installed locally.
+ *
+ * Fix it by importing this file, which declares the stack properly, AND by
+ * actually loading the font (see "LOADING INTER" below).
+ * ---------------------------------------------------------------------------
+ *
+ * LOADING INTER
+ *
+ * Preferred -- self-host, so the widget has no third-party runtime dependency:
+ *
+ *     npm install @fontsource-variable/inter
+ *     import '@fontsource-variable/inter';   // in the app entry point
+ *
+ * Self-hosting matters more than usual here. StablePay is embedded into other
+ * people's pages, and a merchant with a strict Content-Security-Policy will
+ * block a font fetched from fonts.gstatic.com -- the widget would then render
+ * in a fallback face on exactly the sites most likely to care about looking
+ * trustworthy. Self-hosted files ship from the merchant's own origin.
+ *
+ * Acceptable for the demo/landing page only:
+ *
+ *     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ *     <link rel="stylesheet"
+ *           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+ */
+
+:root {
+  /* --- Families --------------------------------------------------------- */
+
+  /* Inter first, then a system stack. The fallbacks are not decorative: if
+     the font fails to load the widget must still look deliberate. */
+  --sp-font-sans: "Inter", "Inter Variable", ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+
+  /* Addresses, transaction hashes and raw amounts. Tabular, unambiguous
+     glyphs matter here -- a user comparing a 0x address against their wallet
+     needs 0/O and 1/l/I to be distinguishable. */
+  --sp-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco,
+    Consolas, "Liberation Mono", monospace;
+
+  /* --- Scale ------------------------------------------------------------
+     These are the sizes already in use across the widget, given names. No
+     value here is new, so adopting the tokens is a rename and not a redesign.
+     ---------------------------------------------------------------------- */
+  --sp-text-xs: 12px;     /* micro labels, disclaimers                      */
+  --sp-text-sm: 13px;     /* dense secondary labels                         */
+  --sp-text-base: 14px;   /* widget body -- the most common size            */
+  --sp-text-md: 15px;     /* emphasised body                                */
+  --sp-text-lg: 16px;     /* page body, primary button label                */
+  --sp-text-xl: 18px;     /* section subheading                             */
+  --sp-text-2xl: 26px;    /* payable amount, dialog title                   */
+
+  --sp-leading-tight: 1.25;   /* headings and the amount display            */
+  --sp-leading-normal: 1.45;  /* UI labels                                  */
+  --sp-leading-relaxed: 1.6;  /* running prose                              */
+
+  /* --- Weights ----------------------------------------------------------
+     400 is added for prose; the widget itself only uses 500/600/700. Avoid
+     going below 400 -- Inter Light on a small payment amount reads as blurry
+     on low-DPI displays. */
+  --sp-weight-regular: 400;
+  --sp-weight-medium: 500;   /* default for UI labels                       */
+  --sp-weight-semibold: 600; /* emphasis, button labels                     */
+  --sp-weight-bold: 700;     /* amounts, headings                           */
+
+  /* Inter is slightly wide at display sizes; pull it in a touch so large
+     numerals do not look loose next to the mark. */
+  --sp-tracking-tight: -0.02em;  /* >=26px                                  */
+  --sp-tracking-normal: 0;
+  --sp-tracking-wide: 0.04em;    /* all-caps micro labels                   */
+}
+
+/* --- Ready-made classes ---------------------------------------------------
+   Optional. Use the variables directly if you prefer. */
+
+.sp-amount {
+  font-family: var(--sp-font-sans);
+  font-size: var(--sp-text-2xl);
+  font-weight: var(--sp-weight-bold);
+  line-height: var(--sp-leading-tight);
+  letter-spacing: var(--sp-tracking-tight);
+  /* Keeps digits from shifting width as the amount updates live. */
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-label {
+  font-family: var(--sp-font-sans);
+  font-size: var(--sp-text-sm);
+  font-weight: var(--sp-weight-medium);
+  line-height: var(--sp-leading-normal);
+}
+
+.sp-label-caps {
+  font-family: var(--sp-font-sans);
+  font-size: var(--sp-text-xs);
+  font-weight: var(--sp-weight-semibold);
+  letter-spacing: var(--sp-tracking-wide);
+  text-transform: uppercase;
+}
+
+.sp-hash {
+  font-family: var(--sp-font-mono);
+  font-size: var(--sp-text-sm);
+  /* Long hashes must break rather than blow out the widget's width. */
+  word-break: break-all;
+}

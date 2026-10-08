@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="848" height="1408" viewBox="0 0 848 1408" role="img" aria-label="StablePay colour palette">
+<rect width="848" height="1408" fill="#FFFFFF"/>
+<text x="48" y="82" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#1A1F36">StablePay colour palette</text>
+<text x="48" y="112" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#697386">Ratios are WCAG 2.1 contrast against white. AA body text needs 4.5:1.</text>
+<text x="48" y="156" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#1A1F36">Brand</text>
+<text x="48" y="180" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" fill="#697386">Sampled from the logo. The mark is the source of truth.</text>
+<rect x="48" y="204" width="176" height="176" rx="12" fill="#235EFE" stroke="#E6EBF1" stroke-width="1"/>
+<text x="64" y="234" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Signal Blue</text>
+<text x="64" y="342" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#FFFFFF">#235EFE</text>
+<text x="64" y="362" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#FFFFFF" opacity="0.75">primary / links &#183; 5.12:1</text>
+<rect x="240" y="204" width="176" height="176" rx="12" fill="#FFC822" stroke="#E6EBF1" stroke-width="1"/>
+<text x="256" y="234" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Beacon Yellow</text>
+<text x="256" y="342" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#FFC822</text>
+<text x="256" y="362" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">accent / fills &#183; 1.55:1</text>
+<rect x="432" y="204" width="176" height="176" rx="12" fill="#FD6724" stroke="#E6EBF1" stroke-width="1"/>
+<text x="448" y="234" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Ember Orange</text>
+<text x="448" y="342" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#FD6724</text>
+<text x="448" y="362" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">accent / warning &#183; 2.94:1</text>
+<text x="48" y="432" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#1A1F36">Neutral</text>
+<text x="48" y="456" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" fill="#697386">Cool-tinted ramp, already shipping in the widget.</text>
+<rect x="48" y="480" width="176" height="176" rx="12" fill="#1A1F36" stroke="#E6EBF1" stroke-width="1"/>
+<text x="64" y="510" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Ink</text>
+<text x="64" y="618" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#FFFFFF">#1A1F36</text>
+<text x="64" y="638" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#FFFFFF" opacity="0.75">body text &#183; 16.24:1</text>
+<rect x="240" y="480" width="176" height="176" rx="12" fill="#4F566B" stroke="#E6EBF1" stroke-width="1"/>
+<text x="256" y="510" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Grey 700</text>
+<text x="256" y="618" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#FFFFFF">#4F566B</text>
+<text x="256" y="638" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#FFFFFF" opacity="0.75">secondary &#183; 7.30:1</text>
+<rect x="432" y="480" width="176" height="176" rx="12" fill="#697386" stroke="#E6EBF1" stroke-width="1"/>
+<text x="448" y="510" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Grey 600</text>
+<text x="448" y="618" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#FFFFFF">#697386</text>
+<text x="448" y="638" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#FFFFFF" opacity="0.75">muted &#183; 4.78:1</text>
+<rect x="624" y="480" width="176" height="176" rx="12" fill="#A3ACB9" stroke="#E6EBF1" stroke-width="1"/>
+<text x="640" y="510" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Grey 400</text>
+<text x="640" y="618" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#A3ACB9</text>
+<text x="640" y="638" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">disabled &#183; 2.29:1</text>
+<rect x="48" y="672" width="176" height="176" rx="12" fill="#CFD7DF" stroke="#E6EBF1" stroke-width="1"/>
+<text x="64" y="702" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Grey 300</text>
+<text x="64" y="810" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#CFD7DF</text>
+<text x="64" y="830" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">border strong &#183; 1.45:1</text>
+<rect x="240" y="672" width="176" height="176" rx="12" fill="#E6EBF1" stroke="#E6EBF1" stroke-width="1"/>
+<text x="256" y="702" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Grey 200</text>
+<text x="256" y="810" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#E6EBF1</text>
+<text x="256" y="830" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">border &#183; 1.20:1</text>
+<rect x="432" y="672" width="176" height="176" rx="12" fill="#F7F9FC" stroke="#E6EBF1" stroke-width="1"/>
+<text x="448" y="702" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Grey 100</text>
+<text x="448" y="810" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#F7F9FC</text>
+<text x="448" y="830" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">surface &#183; 1.05:1</text>
+<rect x="624" y="672" width="176" height="176" rx="12" fill="#FFFFFF" stroke="#E6EBF1" stroke-width="1"/>
+<text x="640" y="702" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">White</text>
+<text x="640" y="810" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#FFFFFF</text>
+<text x="640" y="830" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">base &#183; 1.00:1</text>
+<text x="48" y="900" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#1A1F36">Semantic</text>
+<text x="48" y="924" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" fill="#697386">State colours. Success and danger pairs ship as fill + border + text.</text>
+<rect x="48" y="948" width="176" height="176" rx="12" fill="#15803D" stroke="#E6EBF1" stroke-width="1"/>
+<text x="64" y="978" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Success</text>
+<text x="64" y="1086" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#FFFFFF">#15803D</text>
+<text x="64" y="1106" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#FFFFFF" opacity="0.75">text &#183; 5.02:1</text>
+<rect x="240" y="948" width="176" height="176" rx="12" fill="#BBF7D0" stroke="#E6EBF1" stroke-width="1"/>
+<text x="256" y="978" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Success bd</text>
+<text x="256" y="1086" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#BBF7D0</text>
+<text x="256" y="1106" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">border &#183; 1.21:1</text>
+<rect x="432" y="948" width="176" height="176" rx="12" fill="#F0FDF4" stroke="#E6EBF1" stroke-width="1"/>
+<text x="448" y="978" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Success bg</text>
+<text x="448" y="1086" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#F0FDF4</text>
+<text x="448" y="1106" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">fill &#183; 1.05:1</text>
+<rect x="624" y="948" width="176" height="176" rx="12" fill="#DF1B41" stroke="#E6EBF1" stroke-width="1"/>
+<text x="640" y="978" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Danger</text>
+<text x="640" y="1086" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#FFFFFF">#DF1B41</text>
+<text x="640" y="1106" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#FFFFFF" opacity="0.75">text &#183; 4.80:1</text>
+<rect x="48" y="1140" width="176" height="176" rx="12" fill="#FFDCE0" stroke="#E6EBF1" stroke-width="1"/>
+<text x="64" y="1170" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Danger bd</text>
+<text x="64" y="1278" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#FFDCE0</text>
+<text x="64" y="1298" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">border &#183; 1.27:1</text>
+<rect x="240" y="1140" width="176" height="176" rx="12" fill="#FFF5F5" stroke="#E6EBF1" stroke-width="1"/>
+<text x="256" y="1170" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Danger bg</text>
+<text x="256" y="1278" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#FFF5F5</text>
+<text x="256" y="1298" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">fill &#183; 1.07:1</text>
+<rect x="432" y="1140" width="176" height="176" rx="12" fill="#F6941C" stroke="#E6EBF1" stroke-width="1"/>
+<text x="448" y="1170" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Accent</text>
+<text x="448" y="1278" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#F6941C</text>
+<text x="448" y="1298" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">see note &#183; 2.29:1</text>
+<rect x="624" y="1140" width="176" height="176" rx="12" fill="#FA9C2A" stroke="#E6EBF1" stroke-width="1"/>
+<text x="640" y="1170" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1A1F36">Accent hover</text>
+<text x="640" y="1278" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#1A1F36">#FA9C2A</text>
+<text x="640" y="1298" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#1A1F36" opacity="0.75">see note &#183; 2.13:1</text>
+<text x="48" y="1368" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#697386">Note: #F6941C (accent) and #FD6724 (Ember Orange) are two oranges serving overlapping roles. One should be retired.</text>
+</svg>

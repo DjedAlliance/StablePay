@@ -1,0 +1,60 @@
+/*
+ * StablePay colour tokens.
+ *
+ * Drop-in custom properties mirroring brand/color/palette.json. Import once at
+ * the root of an app, then reference the variables instead of literals:
+ *
+ *     @import url("../brand/color/palette.css");
+ *     .pay-button { background: var(--sp-blue); color: var(--sp-white); }
+ *
+ * The widget's own stylesheets still hard-code these values; migrating them to
+ * these variables is the natural follow-up, and is what would let a merchant
+ * re-theme the widget without a rebuild.
+ */
+
+:root {
+  /* --- Brand, sampled from the logo ------------------------------------ */
+  --sp-blue: #235efe;   /* primary   -- 5.12:1 on white, OK for body text  */
+  --sp-yellow: #ffc822; /* accent    -- 1.55:1 on white, NEVER text        */
+  --sp-orange: #fd6724; /* accent    -- 2.94:1 on white, large/bold only   */
+
+  /* The same three composited over white, i.e. how the logo reads on the
+     page. Provided for illustrations that need to sit flush with the mark. */
+  --sp-blue-soft: #658efe;
+  --sp-yellow-soft: #ffd34e;
+  --sp-orange-soft: #fd8550;
+
+  /* --- Neutrals --------------------------------------------------------- */
+  --sp-ink: #1a1f36;        /* primary text                                */
+  --sp-grey-700: #4f566b;   /* secondary text                              */
+  --sp-grey-600: #697386;   /* muted text, form labels                     */
+  --sp-grey-400: #a3acb9;   /* disabled, placeholder                       */
+  --sp-grey-300: #cfd7df;   /* strong border                               */
+  --sp-grey-200: #e6ebf1;   /* default border                              */
+  --sp-grey-100: #f7f9fc;   /* subtle surface                              */
+  --sp-white: #ffffff;      /* base surface                                */
+
+  /* --- Semantic --------------------------------------------------------- */
+  --sp-success: #15803d;
+  --sp-success-strong: #14532d;
+  --sp-success-mid: #166534;
+  --sp-success-border: #bbf7d0;
+  --sp-success-bg: #f0fdf4;
+
+  --sp-danger: #df1b41;
+  --sp-danger-border: #ffdce0;
+  --sp-danger-bg: #fff5f5;
+
+  /* Inherited Stability Nexus orange. See "two-oranges" in palette.json --
+     this overlaps with --sp-orange and one of them should win. */
+  --sp-accent: #f6941c;
+  --sp-accent-hover: #fa9c2a;
+
+  /* --- Aliases: use these in components, not the raw ramp -------------- */
+  --sp-text: var(--sp-ink);
+  --sp-text-muted: var(--sp-grey-600);
+  --sp-surface: var(--sp-white);
+  --sp-surface-subtle: var(--sp-grey-100);
+  --sp-border: var(--sp-grey-200);
+  --sp-focus-ring: var(--sp-blue);
+}

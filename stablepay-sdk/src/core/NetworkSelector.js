@@ -1,4 +1,4 @@
-import { networksConfig } from "../utils/config";
+import { networksConfig, isNetworkOffered } from "../utils/config";
 
 export class NetworkSelector {
   constructor(merchantConfig) {
@@ -11,7 +11,7 @@ export class NetworkSelector {
   getAvailableNetworks() {
     return Object.entries(networksConfig).reduce(
       (acc, [networkKey, networkConfig]) => {
-        if (!this.blacklist.includes(networkConfig.chainId)) {
+        if (isNetworkOffered(networkConfig) && !this.blacklist.includes(networkConfig.chainId)) {
           acc[networkKey] = networkConfig;
         }
         return acc;

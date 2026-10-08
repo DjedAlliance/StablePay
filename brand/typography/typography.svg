@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1187.0000000000002" viewBox="0 0 900 1187.0000000000002" role="img" aria-label="StablePay typography specimen">
+<rect width="900" height="1187.0000000000002" fill="#FFFFFF"/>
+<text x="56" y="90" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#1A1F36">StablePay typography</text>
+<text x="56" y="118" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#697386">Inter for everything; a monospace stack for anything a user must verify character by character.</text>
+<line x1="56" y1="156" x2="844" y2="156" stroke="#E6EBF1" stroke-width="1"/>
+<text x="56" y="186" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="0.08em" fill="#235EFE">TYPE SCALE</text>
+<text x="56" y="243.4" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-text-2xl</text>
+<text x="266" y="243.4" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.02em" fill="#1A1F36">$5.00 payable</text>
+<text x="844" y="243.4" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">26px / 700</text>
+<text x="56" y="291.3" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-text-xl</text>
+<text x="266" y="291.3" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="0em" fill="#1A1F36">Review your transaction</text>
+<text x="844" y="291.3" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">18px / 600</text>
+<text x="56" y="333.8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-text-lg</text>
+<text x="266" y="333.8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" font-weight="500" letter-spacing="0em" fill="#1A1F36">Pay with StablePay</text>
+<text x="844" y="333.8" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">16px / 500</text>
+<text x="56" y="374.5" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-text-md</text>
+<text x="266" y="374.5" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="0em" fill="#1A1F36">You pay 0.00255 ETH</text>
+<text x="844" y="374.5" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">15px / 500</text>
+<text x="56" y="413.85" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-text-base</text>
+<text x="266" y="413.85" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="500" letter-spacing="0em" fill="#1A1F36">Merchant receives 5 SC</text>
+<text x="844" y="413.85" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">14px / 500</text>
+<text x="56" y="451.85" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-text-sm</text>
+<text x="266" y="451.85" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="500" letter-spacing="0em" fill="#1A1F36">Network fee applies</text>
+<text x="844" y="451.85" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">13px / 500</text>
+<text x="56" y="488.50000000000006" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-text-xs</text>
+<text x="266" y="488.50000000000006" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="0.04em" fill="#1A1F36">POWERED BY DJED</text>
+<text x="844" y="488.50000000000006" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">12px / 600</text>
+<line x1="56" y1="513.9000000000001" x2="844" y2="513.9000000000001" stroke="#E6EBF1" stroke-width="1"/>
+<text x="56" y="543.9000000000001" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="0.08em" fill="#235EFE">MONOSPACE &#8212; ADDRESSES, HASHES, RAW AMOUNTS</text>
+<text x="56" y="589.6000000000001" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-font-mono</text>
+<text x="266" y="589.6000000000001" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="13" font-weight="400" letter-spacing="0em" fill="#1A1F36">0x70997970C51812dc3A010C7d01b50e0d17dc79C8</text>
+<text x="844" y="589.6000000000001" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">13px / 400</text>
+<text x="56" y="627.1500000000002" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">--sp-font-mono</text>
+<text x="266" y="627.1500000000002" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="13" font-weight="400" letter-spacing="0em" fill="#1A1F36">0,O 1,l,I 5,S 8,B &#8212; must stay distinct</text>
+<text x="844" y="627.1500000000002" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">13px / 400</text>
+<line x1="56" y1="653.0000000000002" x2="844" y2="653.0000000000002" stroke="#E6EBF1" stroke-width="1"/>
+<text x="56" y="683.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="0.08em" fill="#235EFE">WEIGHTS</text>
+<text x="56" y="735.0000000000002" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">regular</text>
+<text x="266" y="735.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" letter-spacing="0em" fill="#1A1F36">Inter Regular 400</text>
+<text x="844" y="735.0000000000002" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">20px / 400</text>
+<text x="56" y="782.0000000000002" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">medium</text>
+<text x="266" y="782.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="500" letter-spacing="0em" fill="#1A1F36">Inter Medium 500</text>
+<text x="844" y="782.0000000000002" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">20px / 500</text>
+<text x="56" y="829.0000000000002" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">semibold</text>
+<text x="266" y="829.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" letter-spacing="0em" fill="#1A1F36">Inter SemiBold 600</text>
+<text x="844" y="829.0000000000002" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">20px / 600</text>
+<text x="56" y="876.0000000000002" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">bold</text>
+<text x="266" y="876.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="0em" fill="#1A1F36">Inter Bold 700</text>
+<text x="844" y="876.0000000000002" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="12" fill="#697386">20px / 700</text>
+<line x1="56" y1="905.0000000000002" x2="844" y2="905.0000000000002" stroke="#E6EBF1" stroke-width="1"/>
+<text x="56" y="935.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="0.08em" fill="#235EFE">CHARACTER SET</text>
+<text x="56" y="993.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" fill="#1A1F36">ABCDEFGHIJKLMNOPQRSTUVWXYZ</text>
+<text x="56" y="1025.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" fill="#1A1F36">abcdefghijklmnopqrstuvwxyz</text>
+<text x="56" y="1057.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" fill="#1A1F36">0123456789 $ &#8364; &#163; &#215; &#8212; &#8594; % &#8226; #</text>
+<line x1="56" y1="1103.0000000000002" x2="844" y2="1103.0000000000002" stroke="#E6EBF1" stroke-width="1"/>
+<text x="56" y="1129.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#697386">Rendered with live text, not outlines. If this sheet does not look like Inter,</text>
+<text x="56" y="1149.0000000000002" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#697386">then Inter is not installed &#8212; which is the exact bug typography.css documents.</text>
+</svg>

@@ -45,6 +45,11 @@ export function stablecoinsForPayment(amountBC, scPriceMint, fees) {
   const value = toBigInt(amountBC);
   const price = requirePositive(scPriceMint, "scPriceMint");
   const { fee, treasuryFee } = fees;
+  // Validate the fee scale before using it. The result is discarded: the
+  // floors below must stay separate to match the contract. Without this a
+  // Djed-scaled (1e24) fee returns 0n or a negative amount instead of
+  // failing, and only requiredPaymentForStablecoins would catch it.
+  netFactor(fees);
 
   // Reproduce the contract's two separate floor divisions rather than folding
   // them into one: the results differ by up to 1 wei, and the merchant-facing
@@ -93,6 +98,7 @@ export function requiredPaymentForStablecoins(amountSC, scPriceMint, fees) {
 export function payoutForRedemption(amountSC, scPriceRedeem, fees) {
   const amount = toBigInt(amountSC);
   const price = requirePositive(scPriceRedeem, "scPriceRedeem");
+  netFactor(fees); // same fee-scale guard as stablecoinsForPayment
   const value = (amount * price) / D;
   const f = (value * toBigInt(fees.fee)) / D;
   const fT = (value * toBigInt(fees.treasuryFee)) / D;

@@ -8,8 +8,22 @@ import {
   tradeDataPriceBuySc,
   buyScTx,
 } from "djed-sdk";
-import { parseEther, encodeFunctionData } from "viem";
+import { formatEther, encodeFunctionData } from "viem";
 import { ProtocolAdapter } from "./ProtocolAdapter.js";
+
+/**
+ * Fraction digits shown for a basecoin quote. Matches TectonicClient.quoteMint
+ * (requiredBCFormatted, 8 decimals) so both adapters render the same way.
+ * Display only: the amount sent is always the exact bigint.
+ */
+const QUOTE_DISPLAY_DECIMALS = 8;
+
+/** Truncate a wei amount to a display string with QUOTE_DISPLAY_DECIMALS. */
+function formatQuote(wei) {
+  const [whole, fraction = ""] = formatEther(wei).split(".");
+  const shown = fraction.slice(0, QUOTE_DISPLAY_DECIMALS).replace(/0+$/, "");
+  return shown ? `${whole}.${shown}` : whole;
+}
 
 /**
  * Djed implementation of the protocol adapter.
@@ -66,19 +80,22 @@ export class DjedAdapter extends ProtocolAdapter {
   }
 
   async quoteNativePayment(amountSC) {
-    const totalBCScaled = await tradeDataPriceBuySc(
-      this.djedContract,
-      this.scDecimals,
-      String(amountSC)
-    ).then((r) => r?.totalBCScaled);
+    const trade = await tradeDataPriceBuySc(this.djedContract, this.scDecimals, String(amountSC));
+    const totalBCUnscaled = trade?.totalBCUnscaled;
 
-    if (totalBCScaled === undefined) {
+    if (totalBCUnscaled === undefined || totalBCUnscaled === null) {
       throw new Error("DjedAdapter: failed to compute the required payment amount");
     }
 
+    // Build the amount to send from the exact wei figure. totalBCScaled is a
+    // display string that djed-sdk's decimalScaling truncates to six
+    // decimals; parsing it back with parseEther discards up to 1e12 wei and
+    // underpays the mint, so the merchant is credited short.
+    const requiredBC = BigInt(totalBCUnscaled);
+
     return {
-      requiredBC: parseEther(String(totalBCScaled)),
-      requiredBCFormatted: String(totalBCScaled),
+      requiredBC,
+      requiredBCFormatted: formatQuote(requiredBC),
     };
   }
 

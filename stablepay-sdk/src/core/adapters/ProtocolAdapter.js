@@ -19,7 +19,8 @@
  *   getDetails()            -> diagnostic bag for the review screen
  *
  * Amounts crossing this boundary are bigint base units, never JS numbers:
- * a float cannot represent 18-decimal values exactly and an invoice must be.
+ * a float cannot represent 18-decimal values exactly, and an invoice amount
+ * must be exact to the last base unit.
  */
 export class ProtocolAdapter {
   /** @param {object} config network config entry from utils/config.js */

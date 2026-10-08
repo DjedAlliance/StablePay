@@ -36,6 +36,10 @@ const TransactionReview = ({ onTransactionComplete }) => {
   const [interactionState, setInteractionState] = useState('IDLE');
 
   useEffect(() => {
+    // Drop the previous selection's Transaction too: until the new one is
+    // initialised, paying must not be possible with an adapter bound to the
+    // old network's contract.
+    setTransaction(null);
     setTradeDataBuySc(null);
     setProtocolWarnings([]);
     setMessage("");
@@ -45,6 +49,13 @@ const TransactionReview = ({ onTransactionComplete }) => {
   }, [selectedNetwork, selectedToken]);
 
   useEffect(() => {
+    // Each run is superseded as soon as the selection changes. Every await
+    // below can settle after that, and without this flag an older run that
+    // resolves last overwrites the newer quote, warnings and details: the
+    // consumer would review (and sign from) a price row and protocol warning
+    // belonging to the previously selected network.
+    let cancelled = false;
+
     const initializeTransaction = async () => {
       if (!selectedNetwork || !selectedToken) return;
 
@@ -57,12 +68,14 @@ const TransactionReview = ({ onTransactionComplete }) => {
         // protocol (Djed or Tectonic) from it.
         const newTransaction = new Transaction(networkConfig);
         await newTransaction.init();
+        if (cancelled) return;
         setTransaction(newTransaction);
 
         let quote = null;
         if (selectedToken.key === "native") {
           try {
             quote = await newTransaction.quoteNativePayment(String(tokenAmount));
+            if (cancelled) return;
 
             setTradeDataBuySc(quote.requiredBCFormatted);
           } catch (tradeError) {
@@ -77,11 +90,15 @@ const TransactionReview = ({ onTransactionComplete }) => {
         // so catch here rather than leaving an unhandled rejection.
         newTransaction
           .getWarnings()
-          .then(setProtocolWarnings)
+          .then((warnings) => {
+            if (!cancelled) setProtocolWarnings(warnings);
+          })
           .catch((warningsError) => {
             console.error("Error fetching protocol warnings:", warningsError);
           });
 
+        // A failed quote falls through to here, so re-check before writing.
+        if (cancelled) return;
         setTransactionDetails({
           network: selectedNetwork,
           token: selectedToken.key,
@@ -94,11 +111,15 @@ const TransactionReview = ({ onTransactionComplete }) => {
           ...newTransaction.getBlockchainDetails(),
         });
       } catch (err) {
-        console.error("Error initializing transaction:", err);
+        if (!cancelled) console.error("Error initializing transaction:", err);
       }
     };
 
     initializeTransaction();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedNetwork, selectedToken, networkSelector, setTransactionDetails]);
 
   if (!selectedNetwork || !selectedToken) {

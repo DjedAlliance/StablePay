@@ -38,6 +38,18 @@ export default {
       assetFileNames: "assets/[name][extname]",
     },
   ],
+  // Distribution model — keep in step with package.json:
+  //
+  //   external  = a runtime `dependency` the consumer's install resolves. Every
+  //               entry here must be resolvable from the npm registry; a
+  //               `file:` specifier only exists in this checkout.
+  //               djed-sdk is published (^1.0.2), so it stays external.
+  //   bundled   = inlined into dist/, so it is a `devDependency` only.
+  //               tectonic-sdk is unpublished and is bundled for exactly that
+  //               reason; its own peer dependency, viem, stays external.
+  //
+  // Moving a package between the two lists means moving it between
+  // `dependencies` and `devDependencies` as well.
   external: ["djed-sdk", "web3", "react", "react-dom", "viem", "viem/chains"],
   plugins: [
     resolve({
