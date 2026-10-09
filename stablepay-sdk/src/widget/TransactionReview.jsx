@@ -69,9 +69,17 @@ const TransactionReview = ({ onTransactionComplete }) => {
           }
         }
 
-        // Merchant warnings specific to Tectonic: stability fees and
-        // triggered redemptions.
-        newTransaction.getWarnings().then(setProtocolWarnings);
+        // Protocol-specific merchant warnings (Tectonic stability fees and
+        // triggered redemptions have no Djed equivalent).
+        // getWarnings() already swallows adapter errors, but the promise can
+        // still reject if setProtocolWarnings throws (e.g. unmount mid-flight),
+        // so catch here rather than leaving an unhandled rejection.
+        newTransaction
+          .getWarnings()
+          .then(setProtocolWarnings)
+          .catch((warningsError) => {
+            console.error("Error fetching protocol warnings:", warningsError);
+          });
 
         setTransactionDetails({
           network: selectedNetwork,
