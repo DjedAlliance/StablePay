@@ -24,10 +24,8 @@ const TokenDropdown = () => {
     try {
       if (selectToken(newValue)) {
         const networkConfig = networkSelector.getSelectedNetworkConfig();
-        // Pass the whole config: the adapter layer selects the protocol from
-        // it. The old two-argument form assumed Djed and passed
-        // `networkConfig.djedAddress`, which is undefined on a Tectonic
-        // network and threw before any RPC call was made.
+        // Transaction takes the whole network config; it reads the Tectonic
+        // address and RPC endpoint from it.
         const transaction = new Transaction(networkConfig);
         await transaction.init();
 

@@ -19,10 +19,10 @@ export { TECTONIC_ABI };
 /**
  * Client for a single deployed Tectonic contract.
  *
- * Structural difference from Djed worth internalising: **the Tectonic contract
- * is itself the stablecoin ERC-20**. There is no separate `stableCoin()`
- * address to look up — the protocol address and the token address are the same.
- * Only the equity coin lives in its own contract.
+ * Structural point worth internalising: **the Tectonic contract is itself the
+ * stablecoin ERC-20.** There is no separate token contract to look up — the
+ * protocol address and the token address are the same value. Only the equity
+ * coin lives in its own contract.
  */
 export class TectonicClient {
   /**

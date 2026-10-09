@@ -1,19 +1,23 @@
 import { TectonicClient, RESERVE_HEALTH, fromBaseUnits } from "tectonic-sdk";
-import { ProtocolAdapter } from "./ProtocolAdapter.js";
 
 /**
- * Tectonic implementation of the protocol adapter.
+ * Every chain interaction StablePay performs, in one place.
  *
- * Two things differ structurally from the Djed adapter and are worth stating
- * plainly, because they are the source of most porting mistakes:
+ * Two structural points, because they are where assumptions carried over from
+ * other stablecoin protocols tend to break:
  *
  *  1. The Tectonic contract IS the stablecoin ERC-20. There is no separate
  *     token address to look up; `tectonicAddress` serves as both.
- *  2. Fees and ratios are scaled by 1e18, not Djed's 1e24.
+ *  2. Fees and reserve ratios are scaled by 1e18 (the contract's `D`).
+ *
+ * Amounts crossing this boundary are bigint base units, never JS numbers: a
+ * float cannot represent 18-decimal values exactly, and an invoice must be.
  */
-export class TectonicAdapter extends ProtocolAdapter {
+export class TectonicAdapter {
+  /** @param {object} config network config entry from utils/config.js */
   constructor(config) {
-    super(config);
+    if (!config) throw new Error("TectonicAdapter: network config is required");
+    this.config = config;
     this.address = config.tectonicAddress;
 
     // The zero address is rejected explicitly, not just falsy values. It is a
@@ -69,7 +73,6 @@ export class TectonicAdapter extends ProtocolAdapter {
 
   getDetails() {
     return {
-      protocol: "tectonic",
       protocolAddress: this.address,
       stableCoinAddress: this.address,
       equityCoinAddress: this.params?.equityCoin ?? "N/A",
@@ -80,8 +83,9 @@ export class TectonicAdapter extends ProtocolAdapter {
   }
 
   /**
-   * Tectonic has two behaviours with no Djed equivalent that materially affect
-   * a merchant accepting payment. Surfacing them is a correctness requirement,
+   * Two Tectonic behaviours materially affect a merchant accepting payment,
+   * and neither is common to stablecoins generally. Surfacing them is a
+   * correctness requirement,
    * not a nicety: a merchant who does not know about triggered redemptions may
    * find their stablecoin position converted to native currency without having
    * initiated anything.
