@@ -69,22 +69,25 @@ StablePay also allows automatic conversion between the two. For example, a consu
 a native cryptocurrency, but the merchant receives the payment in a stablecoin backed by that cryptocurrency.
 The conversion happens automatically, by interacting with the stablecoin contract to mint stablecoins.
 
-Currently, stablecoins based on the [Djed stablecoin protocol](https://djed.one) deployed on EVM-compatible chains are supported.
+StablePay uses stablecoins based on the [Tectonic stablecoin protocol](https://github.com/StabilityNexus/Tectonic-EVM-Contracts), deployed on EVM-compatible chains.
+
+> **Status:** Tectonic is not yet deployed on any public network, so there are currently no live payment networks. Development runs against a local deployment — see [tectonic-local](https://github.com/DjedAlliance/StablePay/tree/main/tectonic-local). Support for the Djed protocol was removed once StablePay moved to Tectonic; if you need it, use a release tagged before that change.
 
 
 ## **Code Structure Overview**
 
-The StablePay widget itself is located in the [stablepay-sdk folder](https://github.com/DjedAlliance/StablePay/tree/main/stablepay-sdk). It makes use of the Djed SDK to interact with Djed stablecoin contracts. The Djed SDK is located in the [djed-sdk folder](https://github.com/DjedAlliance/StablePay/tree/main/djed-sdk). 
+The StablePay widget itself is located in the [stablepay-sdk folder](https://github.com/DjedAlliance/StablePay/tree/main/stablepay-sdk). It uses the Tectonic SDK to interact with Tectonic stablecoin contracts. The Tectonic SDK is located in the [tectonic-sdk folder](https://github.com/DjedAlliance/StablePay/tree/main/tectonic-sdk).
 
-The main files of the Djed SDK and their purposes are:
+One structural point worth knowing before reading the code: **the Tectonic contract is itself the stablecoin ERC-20.** There is no separate token contract, so the protocol address and the token address are the same value.
 
-* [djed/stableCoin.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/stableCoin.js) - contains functions to build transations that buy and sell stablecoins.
-* [djed/reserveCoin.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/reserveCoin.js) - contains functions to build transations that buy and sell reservecoins.
-* [djed/djed.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/djed.js) - contains functions to connect to the Djed contracts and to the ERC20 contracts for the stablecoins and reservecoins.
-* [djed/system.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/djed/system.js) - contains functions to fetch the parameters and state variables of the Djed contracts and of the user.
-* [oracle/oracle.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/oracle/oracle.js) - contains functions to connect to the oracle contract used by a Djed contract.
-* [constants.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/constants.js) - contains configuration constants.
-* [web3.js](https://github.com/DjedAlliance/StablePay/blob/main/djed-sdk/src/web3.js) - handles wallet connection.
+The main files of the Tectonic SDK and their purposes are:
+
+* [pricing.js](https://github.com/DjedAlliance/StablePay/blob/main/tectonic-sdk/src/pricing.js) - pure arithmetic mirroring the contract: what a payment mints, what an invoice costs, and fee handling. No network access, so it is directly unit-testable.
+* [tectonic.js](https://github.com/DjedAlliance/StablePay/blob/main/tectonic-sdk/src/tectonic.js) - the client: reads prices and reserve state, quotes payments, and builds transactions.
+* [constants.js](https://github.com/DjedAlliance/StablePay/blob/main/tectonic-sdk/src/constants.js) - fixed-point conventions and reserve-health bands.
+* [artifacts/TectonicABI.js](https://github.com/DjedAlliance/StablePay/blob/main/tectonic-sdk/src/artifacts/TectonicABI.js) - the contract ABI, as a JS module rather than JSON so it needs no bundler configuration.
+
+There is also a [tectonic-local folder](https://github.com/DjedAlliance/StablePay/tree/main/tectonic-local) containing a Foundry project used to run Tectonic on a local chain during development. It is a development aid and will be removed once a public deployment exists.
 
 The main files of the StablePay widget and their purposes are:
 

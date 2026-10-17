@@ -1,10 +1,11 @@
 /**
  * Tectonic fixed-point conventions.
  *
- * IMPORTANT: Tectonic scales fees and ratios by D = 1e18, whereas Djed used
- * 1e24 (SCALING_DECIMALS). Reusing Djed's scaling factor here silently
- * misprices every transaction by six orders of magnitude, so the two SDKs
- * deliberately do not share this constant.
+ * IMPORTANT: Tectonic scales fees and ratios by D = 1e18. Other stablecoin
+ * protocols commonly use 1e24, and a fee value scaled for that convention is
+ * a million times too large here — large enough to consume the entire
+ * payment. netFactor() rejects any fee at or above D rather than letting a
+ * mis-scaled value silently misprice every transaction.
  */
 
 /** Fixed-point denominator used throughout Tectonic.sol. */
@@ -29,8 +30,8 @@ export const ROUNDING_SAFETY_WEI = 1n;
  * Tectonic's mint() may run up to numRedemptionIterations (100) triggered
  * redemptions before minting when the reserve ratio is below critical, and the
  * number of iterations depends on chain state at execution time rather than at
- * estimation time. A fixed gas limit (djed-sdk used a hard-coded 500,000) is
- * unsafe here.
+ * estimation time. A fixed gas limit is unsafe here: it would strand the
+ * transaction out of gas exactly when the protocol is under stress.
  */
 export const GAS_LIMIT_MULTIPLIER_PERCENT = 150n;
 
@@ -47,8 +48,9 @@ export const TRANSACTION_VALIDITY = {
 
 /**
  * Reserve-ratio health bands, derived from the contract's own thresholds.
- * Tectonic never blocks an operation on ratio (unlike Djed's reserveRatioMin),
- * but the widget should tell a merchant what they are walking into.
+ * Tectonic never blocks an operation on the reserve ratio — it has no
+ * minimum-ratio gate — but the widget should tell a merchant what they are
+ * walking into.
  */
 export const RESERVE_HEALTH = {
   HEALTHY: "healthy", // ratio > safeReserveRatio: no stability fee

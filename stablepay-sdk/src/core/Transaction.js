@@ -1,41 +1,32 @@
-import { createAdapter } from "./adapters/index.js";
+import { TectonicAdapter } from "./adapters/TectonicAdapter.js";
 
 /**
- * Transaction is the widget's single entry point to a stablecoin protocol.
+ * Transaction is the widget's entry point to the Tectonic stablecoin protocol.
  *
- * It used to talk to djed-sdk directly. It now delegates to a ProtocolAdapter
- * chosen from the network config, so the widget works against either Djed or
- * Tectonic without knowing which. The public method names are unchanged
- * (`init`, `getBlockchainDetails`, `handleTradeDataBuySc`, `buyStablecoins`)
- * so existing widget code and merchant integrations keep working.
- *
- * Construction accepts either shape:
- *   new Transaction(networkConfig)                  // preferred
- *   new Transaction(networkUri, protocolAddress)    // legacy, Djed-only
+ * Tectonic is the only supported protocol, so this constructs the Tectonic
+ * adapter directly. The adapter is kept as a separate class because it
+ * isolates every chain interaction behind a small surface, which keeps this
+ * file about orchestration rather than RPC detail.
  */
 export class Transaction {
-  constructor(networkConfigOrUri, legacyDjedAddress) {
-    if (typeof networkConfigOrUri === "string") {
-      // Legacy two-argument form. It always meant Djed, so assume that.
-      if (!networkConfigOrUri || !legacyDjedAddress) {
-        throw new Error("Network URI and protocol address are required");
-      }
-      this.config = {
-        uri: networkConfigOrUri,
-        djedAddress: legacyDjedAddress,
-        protocol: "djed",
-      };
-    } else {
-      if (!networkConfigOrUri) throw new Error("Network configuration is required");
-      this.config = networkConfigOrUri;
+  /**
+   * @param {object} networkConfig entry from utils/config.js. Must carry a
+   *   `tectonicAddress` and an `uri`.
+   */
+  constructor(networkConfig) {
+    if (!networkConfig) throw new Error("Network configuration is required");
+    if (typeof networkConfig === "string") {
+      // An older form took (uri, protocolAddress). It has been removed: the
+      // network config carries both, plus the token metadata the widget needs.
+      throw new Error(
+        "Transaction: pass the whole network config object, not a URI string. " +
+          "The (uri, address) form has been removed."
+      );
     }
 
-    this.networkUri = this.config.uri;
-    this.protocol = this.config.protocol ?? "djed";
-    this.adapter = createAdapter(this.config);
-
-    // Retained for backwards compatibility with callers that read this field.
-    this.djedAddress = this.config.djedAddress;
+    this.config = networkConfig;
+    this.networkUri = networkConfig.uri;
+    this.adapter = new TectonicAdapter(networkConfig);
   }
 
   async init() {
@@ -49,7 +40,6 @@ export class Transaction {
   /** Diagnostics shown on the transaction review screen. */
   getBlockchainDetails() {
     return {
-      protocol: this.protocol,
       networkUri: this.networkUri,
       ...this.adapter.getDetails(),
     };
@@ -59,10 +49,9 @@ export class Transaction {
    * How much native currency the consumer must send so that the merchant
    * receives `amountScaled` stablecoins.
    *
-   * Returns a human-readable string, matching this method's previous
-   * behaviour. Use `quoteNativePayment` when you need the exact wei value for
-   * building a transaction — never re-parse the display string, which is
-   * rounded for presentation.
+   * Returns a human-readable string for display. Use `quoteNativePayment` when
+   * you need the exact wei value for building a transaction — never re-parse
+   * the display string, which is rounded for presentation.
    *
    * @param {string} amountScaled human-readable stablecoin amount
    * @returns {Promise<string>}
@@ -108,7 +97,10 @@ export class Transaction {
     return this.adapter.buildTransferTx({ from, to, amount });
   }
 
-  /** Stablecoin token address for the direct-transfer flow. */
+  /**
+   * Stablecoin token address for the direct-transfer flow. Under Tectonic this
+   * is the protocol contract itself — there is no separate token contract.
+   */
   getStablecoinAddress() {
     return this.adapter.getStablecoinAddress();
   }
@@ -117,7 +109,11 @@ export class Transaction {
     return this.adapter.getDecimals();
   }
 
-  /** Protocol-specific merchant warnings; empty for Djed. */
+  /**
+   * Merchant-facing warnings specific to Tectonic: stability fees shrink a
+   * held balance, and triggered redemptions can convert a merchant's
+   * stablecoins to native currency without the merchant acting.
+   */
   async getWarnings() {
     try {
       return await this.adapter.getWarnings();
