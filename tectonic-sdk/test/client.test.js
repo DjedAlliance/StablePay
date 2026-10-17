@@ -18,6 +18,7 @@ function stubClient(overrides = {}) {
     fee: 15n * 10n ** 15n,
     treasuryFee: 5n * 10n ** 15n,
     decimals: 18,
+    superCriticalReserveRatio: 11n * 10n ** 17n,
     criticalReserveRatio: 12n * 10n ** 17n,
     safeReserveRatio: 15n * 10n ** 17n,
     equityCoin: "0x4444444444444444444444444444444444444444",
@@ -80,6 +81,7 @@ test("init caches the immutable parameters", async () => {
 
   assert.equal(params.fee, 15n * 10n ** 15n);
   assert.equal(params.decimals, 18);
+  assert.equal(params.superCriticalReserveRatio, 11n * 10n ** 17n);
   assert.equal(params.symbol, "SC");
 
   const callsAfterInit = publicClient.calls.length;
@@ -110,6 +112,20 @@ test("quoteMint returns the exact wei cost plus a formatted display string", asy
   // 100 SC at 0.0005 BC each is 0.05 BC before ~2% of fees.
   assert.ok(quote.requiredBC > 5n * 10n ** 16n, "cost exceeds the fee-free amount");
   assert.ok(quote.requiredBC < 6n * 10n ** 16n, "cost is not wildly inflated");
+});
+
+test("quotes reject fractional numbers but accept the same amount as a string", async () => {
+  const { client } = makeClient();
+  await client.init();
+
+  await assert.rejects(() => client.quoteMint(0.1 + 0.2), /not a safe integer/);
+  await assert.rejects(() => client.quotePayment(0.25), /not a safe integer/);
+  await assert.rejects(() => client.quoteRedeem(10.5), /not a safe integer/);
+
+  const fromString = await client.quoteMint("0.3");
+  assert.equal(fromString.amountSC, 3n * 10n ** 17n);
+  const fromInteger = await client.quoteMint(100);
+  assert.equal(fromInteger.amountSC, 100n * D);
 });
 
 test("quoteMint and quotePayment are mutually consistent", async () => {

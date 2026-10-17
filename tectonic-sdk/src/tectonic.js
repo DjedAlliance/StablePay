@@ -43,7 +43,7 @@ export class TectonicClient {
     this.publicClient =
       publicClient ?? createPublicClient({ chain, transport: http(rpcUrl) });
 
-    /** @type {null | {fee: bigint, treasuryFee: bigint, decimals: number, criticalReserveRatio: bigint, safeReserveRatio: bigint, equityCoin: string, oracle: string, symbol: string}} */
+    /** @type {null | {fee: bigint, treasuryFee: bigint, decimals: number, superCriticalReserveRatio: bigint, criticalReserveRatio: bigint, safeReserveRatio: bigint, equityCoin: string, oracle: string, symbol: string}} */
     this.params = null;
   }
 
@@ -61,22 +61,33 @@ export class TectonicClient {
       });
 
     try {
-      const [fee, treasuryFee, decimals, criticalReserveRatio, safeReserveRatio, equityCoin, oracle, symbol] =
-        await Promise.all([
-          read("fee"),
-          read("treasuryFee"),
-          read("decimals"),
-          read("criticalReserveRatio"),
-          read("safeReserveRatio"),
-          read("equityCoin"),
-          read("oracle"),
-          read("symbol"),
-        ]);
+      const [
+        fee,
+        treasuryFee,
+        decimals,
+        superCriticalReserveRatio,
+        criticalReserveRatio,
+        safeReserveRatio,
+        equityCoin,
+        oracle,
+        symbol,
+      ] = await Promise.all([
+        read("fee"),
+        read("treasuryFee"),
+        read("decimals"),
+        read("superCriticalReserveRatio"),
+        read("criticalReserveRatio"),
+        read("safeReserveRatio"),
+        read("equityCoin"),
+        read("oracle"),
+        read("symbol"),
+      ]);
 
       this.params = {
         fee: BigInt(fee),
         treasuryFee: BigInt(treasuryFee),
         decimals: Number(decimals),
+        superCriticalReserveRatio: BigInt(superCriticalReserveRatio),
         criticalReserveRatio: BigInt(criticalReserveRatio),
         safeReserveRatio: BigInt(safeReserveRatio),
         equityCoin,
@@ -126,7 +137,11 @@ export class TectonicClient {
     return BigInt(await this._read("scPriceMint"));
   }
 
-  /** Redemption price: min(target, reserve per stablecoin). */
+  /**
+   * Redemption price: min(target, R / (superCriticalReserveRatio * supply)).
+   * Below the super-critical floor stablecoins redeem at a discount, which
+   * keeps the reserve ratio from falling under that floor.
+   */
   async scPriceRedeem() {
     return BigInt(await this._read("scPriceRedeem"));
   }
@@ -193,7 +208,10 @@ export class TectonicClient {
   /**
    * Quote the native-currency cost of minting a given stablecoin amount.
    *
-   * @param {string|number|bigint} amountSC human amount ("10.5") or base units (bigint)
+   * @param {string|bigint|number} amountSC human amount as a decimal string
+   *   ("10.5"), base units as a bigint, or a whole amount as a safe-integer
+   *   number. Fractional numbers are rejected (see toBaseUnits): pass "10.5",
+   *   not 10.5.
    * @returns {Promise<{amountSC: bigint, amountSCFormatted: string, requiredBC: bigint, requiredBCFormatted: string, scPriceMint: bigint}>}
    */
   async quoteMint(amountSC) {
@@ -212,7 +230,13 @@ export class TectonicClient {
     };
   }
 
-  /** Inverse quote: how many stablecoins a given payment mints. */
+  /**
+   * Inverse quote: how many stablecoins a given payment mints.
+   *
+   * @param {string|bigint|number} amountBC wei as a bigint, a human ETH amount
+   *   as a decimal string ("0.25"), or a whole ETH amount as a safe-integer
+   *   number. Fractional numbers are rejected.
+   */
   async quotePayment(amountBC) {
     this._requireInit();
     const price = await this.scPriceMint();
@@ -225,7 +249,11 @@ export class TectonicClient {
     };
   }
 
-  /** Quote the payout for redeeming stablecoins back to native currency. */
+  /**
+   * Quote the payout for redeeming stablecoins back to native currency.
+   *
+   * @param {string|bigint|number} amountSC same input contract as quoteMint.
+   */
   async quoteRedeem(amountSC) {
     this._requireInit();
     const decimals = this.params.decimals ?? SC_DECIMALS;

@@ -15,6 +15,8 @@ evm_version = "paris"
 
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    # src/ is synced verbatim from Tectonic-EVM-Contracts, which imports this form.
+    "openzeppelin-contracts/=lib/openzeppelin-contracts/",
     "forge-std/=lib/forge-std/src/",
 ]
 
@@ -24,10 +26,10 @@ fs_permissions = [{ access = "read-write", path = "./deployments" }]
 # ---------------------------------------------------------------------------
 # forge lint
 #
-# This project is a FORK. Its naming deliberately matches
-# StabilityNexus/Tectonic-EVM-Contracts so that `diff` against upstream shows
-# only the eight intentional patches, and so that fixes can be handed back as
-# clean PRs.
+# src/Tectonic.sol, Coin.sol, IOracle.sol and Math.sol are synced verbatim
+# from Tectonic-EVM-Contracts (DeveloperAmrit fork, branch fix-4-6-fresh,
+# commit cd459dd). Only MockOracle.sol is local. Keep them byte-identical so
+# `diff` against upstream stays empty; fix bugs upstream, then re-sync.
 #
 # The suppressed lints all want cosmetic renames of forked code. Two concrete
 # reasons not to apply them:
@@ -36,8 +38,8 @@ fs_permissions = [{ access = "read-write", path = "./deployments" }]
 #      `criticalReserveRatio` into `CRITICAL_RESERVE_RATIO` renames its
 #      auto-generated getter, which breaks tectonic-sdk's TectonicABI.json and
 #      every SDK call that reads it.
-#   2. Renaming `amountSC` -> `amountSc` throughout would bury the seven real
-#      patches in hundreds of cosmetic diff lines.
+#   2. Renaming `amountSC` -> `amountSc` throughout would make the synced
+#      files diverge from upstream for purely cosmetic reasons.
 #
 # If upstream later adopts these conventions, drop this block and follow suit.
 # Lint notes are non-blocking, so deleting this section only restores noise.
