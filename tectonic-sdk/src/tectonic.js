@@ -43,7 +43,7 @@ export class TectonicClient {
     this.publicClient =
       publicClient ?? createPublicClient({ chain, transport: http(rpcUrl) });
 
-    /** @type {null | {fee: bigint, treasuryFee: bigint, decimals: number, criticalReserveRatio: bigint, safeReserveRatio: bigint, equityCoin: string, oracle: string, symbol: string}} */
+    /** @type {null | {fee: bigint, treasuryFee: bigint, decimals: number, superCriticalReserveRatio: bigint, criticalReserveRatio: bigint, safeReserveRatio: bigint, equityCoin: string, oracle: string, symbol: string}} */
     this.params = null;
   }
 
@@ -61,22 +61,33 @@ export class TectonicClient {
       });
 
     try {
-      const [fee, treasuryFee, decimals, criticalReserveRatio, safeReserveRatio, equityCoin, oracle, symbol] =
-        await Promise.all([
-          read("fee"),
-          read("treasuryFee"),
-          read("decimals"),
-          read("criticalReserveRatio"),
-          read("safeReserveRatio"),
-          read("equityCoin"),
-          read("oracle"),
-          read("symbol"),
-        ]);
+      const [
+        fee,
+        treasuryFee,
+        decimals,
+        superCriticalReserveRatio,
+        criticalReserveRatio,
+        safeReserveRatio,
+        equityCoin,
+        oracle,
+        symbol,
+      ] = await Promise.all([
+        read("fee"),
+        read("treasuryFee"),
+        read("decimals"),
+        read("superCriticalReserveRatio"),
+        read("criticalReserveRatio"),
+        read("safeReserveRatio"),
+        read("equityCoin"),
+        read("oracle"),
+        read("symbol"),
+      ]);
 
       this.params = {
         fee: BigInt(fee),
         treasuryFee: BigInt(treasuryFee),
         decimals: Number(decimals),
+        superCriticalReserveRatio: BigInt(superCriticalReserveRatio),
         criticalReserveRatio: BigInt(criticalReserveRatio),
         safeReserveRatio: BigInt(safeReserveRatio),
         equityCoin,
@@ -126,7 +137,11 @@ export class TectonicClient {
     return BigInt(await this._read("scPriceMint"));
   }
 
-  /** Redemption price: min(target, reserve per stablecoin). */
+  /**
+   * Redemption price: min(target, R / (superCriticalReserveRatio * supply)).
+   * Below the super-critical floor stablecoins redeem at a discount, which
+   * keeps the reserve ratio from falling under that floor.
+   */
   async scPriceRedeem() {
     return BigInt(await this._read("scPriceRedeem"));
   }
@@ -193,7 +208,11 @@ export class TectonicClient {
   /**
    * Quote the native-currency cost of minting a given stablecoin amount.
    *
-   * @param {string|number|bigint} amountSC human amount ("10.5") or base units (bigint)
+   * @param {string|bigint|number} amountSC a token amount as a decimal string
+   *   ("10.5", preferred) or a whole amount as a safe-integer number (10).
+   *   A bigint is read as base units that are already scaled: 10n ** 18n is
+   *   one token, 1n is one base unit. Fractional numbers are rejected (see
+   *   toBaseUnits): pass "10.5", not 10.5.
    * @returns {Promise<{amountSC: bigint, amountSCFormatted: string, requiredBC: bigint, requiredBCFormatted: string, scPriceMint: bigint}>}
    */
   async quoteMint(amountSC) {
@@ -212,7 +231,13 @@ export class TectonicClient {
     };
   }
 
-  /** Inverse quote: how many stablecoins a given payment mints. */
+  /**
+   * Inverse quote: how many stablecoins a given payment mints.
+   *
+   * @param {string|bigint|number} amountBC an ETH amount as a decimal string
+   *   ("0.25", preferred) or a whole ETH amount as a safe-integer number.
+   *   A bigint is read as wei. Fractional numbers are rejected.
+   */
   async quotePayment(amountBC) {
     this._requireInit();
     const price = await this.scPriceMint();
@@ -225,7 +250,11 @@ export class TectonicClient {
     };
   }
 
-  /** Quote the payout for redeeming stablecoins back to native currency. */
+  /**
+   * Quote the payout for redeeming stablecoins back to native currency.
+   *
+   * @param {string|bigint|number} amountSC same input contract as quoteMint.
+   */
   async quoteRedeem(amountSC) {
     this._requireInit();
     const decimals = this.params.decimals ?? SC_DECIMALS;
@@ -258,6 +287,8 @@ export class TectonicClient {
    * @param {string} options.receiver address credited with the stablecoins
    * @param {bigint} options.value payment in wei (from quoteMint().requiredBC)
    * @returns {Promise<{to: string, from: string, value: bigint, data: string, gas?: bigint}>}
+   * @throws if gas estimation fails while the reserve ratio is below critical:
+   *   the mint would revert on chain, so the payer is not asked to sign it.
    */
   async buildMintTx({ payer, receiver, value }) {
     if (!payer) throw new Error("buildMintTx: payer is required");
@@ -283,9 +314,24 @@ export class TectonicClient {
       });
       tx.gas = (estimate * GAS_LIMIT_MULTIPLIER_PERCENT) / 100n;
     } catch (error) {
-      // Estimation can fail for benign reasons (unfunded account in a preview,
-      // node quirks). Surface the reason but let the wallet do its own
-      // estimation rather than blocking the payment.
+      // Below the critical ratio, mint() first runs forced redemptions, and
+      // the synced Tectonic contract reverts there whenever a holder owes a
+      // stability fee (the sweep burns the pre-fee balance; see
+      // test_UPSTREAM_BUG_SweepRevertsWhenAStabilityFeeIsOwed). A failed
+      // estimate in that state almost certainly means the mint would revert,
+      // so stop here instead of letting the payer sign a doomed transaction.
+      // Remove once the fix lands in Tectonic-EVM-Contracts and is synced.
+      if (await this._isBelowCriticalRatio()) {
+        throw new Error(
+          "Tectonic: this payment cannot go through right now. The protocol is below its " +
+            "critical reserve ratio and the mint would fail on chain. Please try again later.\n\n" +
+            `Gas estimation error: ${error?.shortMessage || error?.message || error}`
+        );
+      }
+
+      // Otherwise estimation can fail for benign reasons (unfunded account in
+      // a preview, node quirks). Surface the reason but let the wallet do its
+      // own estimation rather than blocking the payment.
       console.warn(
         "[tectonic-sdk] gas estimation failed; falling back to wallet estimation:",
         error?.shortMessage || error?.message || error
@@ -293,6 +339,23 @@ export class TectonicClient {
     }
 
     return tx;
+  }
+
+  /**
+   * Whether the reserve ratio is below critical, i.e. whether mint() will run
+   * forced redemptions first. Works before init(). If the state cannot be read
+   * it answers false, so a read failure never blocks a payment on its own.
+   */
+  async _isBelowCriticalRatio() {
+    try {
+      const [ratio, critical] = await Promise.all([
+        this._read("ratio"),
+        this.params?.criticalReserveRatio ?? this._read("criticalReserveRatio"),
+      ]);
+      return BigInt(ratio) < BigInt(critical);
+    } catch {
+      return false;
+    }
   }
 
   /**

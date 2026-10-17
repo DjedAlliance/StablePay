@@ -1,108 +1,23 @@
 // SPDX-License-Identifier: AEL
 pragma solidity ^0.8.0;
 
-// =============================================================================
-// LOCAL DEVELOPMENT FORK of StabilityNexus/Tectonic-EVM-Contracts/src/Tectonic.sol
-// Forked at upstream commit e657330.
-//
-// PURPOSE: unblock StablePay integration work before the upstream contract is
-// finished. This is NOT the canonical Tectonic implementation. Do not deploy to
-// a public network. When upstream is complete, delete this fork and point the
-// SDK at the real deployment.
-//
-// PATCHES APPLIED (each marked `PATCH n` inline). All are minimal and preserve
-// upstream behaviour wherever the upstream behaviour is well-defined:
-//
-//   1. ratio() reverted with division-by-zero whenever L() == 0 (i.e. at zero
-//      stablecoin supply). Because mint() and mintEquityCoins() both read
-//      ratio() before doing anything, the very first mint on a fresh deployment
-//      always reverted and the contract could never be bootstrapped.
-//      Fix: return type(uint256).max when L() == 0 ("infinitely reserved"),
-//      which is the mathematically correct limit and makes every
-//      `ratio() < threshold` guard evaluate false at zero supply.
-//
-//   2. Nested ReentrancyGuard. _redeem was `internal nonReentrant` while its
-//      only callers (redeem, forceRedemptions) were themselves nonReentrant, so
-//      OpenZeppelin's guard reverted on the nested entry: redeem() could never
-//      succeed. Likewise mint / mintEquityCoins / redeemEquityCoins call
-//      forceRedemptions, which was `public nonReentrant`.
-//      Fix: drop nonReentrant from the internal _redeem, and split
-//      forceRedemptions into a guarded external entry point plus an unguarded
-//      internal _forceRedemptions used by the already-guarded callers.
-//
-//   3. forceRedemptions computed `% (holders.length - 1)` which reverts with
-//      panic 0x12 when there are no holders (length == 1, index 0 being the
-//      address(0) sentinel).
-//      Fix: return early when there are no holders.
-//
-//   4. leverage() and cushion() divided by E() and L() without zero checks.
-//      Fix: guard both. Purely informational views; no economic change.
-//
-//   5. ecPrice() was `internal`, so no off-chain caller could read the equity
-//      coin price. Fix: make it `public`. (Requested upstream; see doc 06.)
-//
-//   6. yieldFromStabilityFeeDaily() divided by equityCoin.totalSupply(), which
-//      is zero before any equity coin is minted. Fix: guard.
-//
-//   7. stabilityFeeAmount() measured accrual from timestamp[a], which defaults
-//      to 0 (the UNIX epoch) for an address that has never been charged. A
-//      brand-new holder receiving coins while r <= rsafe would be assessed a
-//      ~56-year fee window and have their entire balance burned.
-//      Fix: return 0 when timestamp[a] == 0 (the accrual window opens on first
-//      charge, which _update performs on receipt), and cap the fee at the
-//      holder's balance as a belt-and-braces invariant.
-//      NOTE: this is a behavioural change, not just a guard. Upstream must
-//      decide the intended semantics; flag it in the bug report.
-//
-//   8. chargeStabilityFee() burned first and recorded timestamp[a] afterwards.
-//      Because _burn triggers _update, which calls chargeStabilityFee again,
-//      and the timestamp had not yet moved, the fee recomputed as non-zero on
-//      every level: unbounded recursion ending only in out-of-gas. It fires
-//      whenever a fee is owed, so every transfer, mint and redeem reverted
-//      once the reserve ratio reached rsafe and any time had passed.
-//      Fix: write the timestamp before the burn, so the re-entrant call sees
-//      t = 0. Found by test_ChargingAFeeDoesNotRecurseUntilOutOfGas.
-//
-//   9. The constructor validated none of the parameter constraints the paper
-//      states in section 2.11. In particular rsafe == D makes stabilityFee()
-//      divide by zero on every operation, bricking the deployment with no
-//      signal at deploy time. Fix: require the documented bounds, plus
-//      non-zero oracle and treasury addresses.
-//
-//   3b. forceRedemptions advanced its index immediately after a redemption,
-//      but updateHolder backfills the vacated slot by swapping in the last
-//      holder — so that holder was passed over for the rest of the sweep.
-//      Coverage still worked out because the index wraps, so this is a
-//      robustness fix rather than a live defect. Fix: only advance when the
-//      slot was not backfilled.
-//
-//   Minor additions by the fork (not bug fixes): holderCount() view for tests
-//   and SDK use; send() no-ops on zero amount to avoid pointless calls to the
-//   treasury when treasuryFee == 0; equity coin symbol "RC" -> "EC".
-//
-// NOT patched (deliberately out of scope — these are upstream design questions,
-// tracked in documentation/docs/05-tectonic-contract-status.md):
-//   - speculation fee, staking interest, tx limits, volume-based spreads (TODO)
-//   - forceRedemptions being permissionless and refunding gas to tx.origin
-//   - absence of a Djed-style UI fee
-// =============================================================================
-
 import "./Math.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "./Coin.sol";
 import "./IOracle.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract Tectonic is ERC20, ReentrancyGuard {
     IOracle public oracle;
     Coin public equityCoin;
-    uint256 public constant D = 1e18; // Denominator for fixed-point calculations
+    uint256 public constant D = 1e18; // Denominator for fixed-point calculations    
+    uint256 public immutable superCriticalReserveRatio; // floor of the reserve ratio; below it, stablecoins are redeemed at a discount (see scPriceRedeem)
     uint256 public immutable criticalReserveRatio;
     uint256 public immutable safeReserveRatio;
-    uint256 public constant numRedemptionIterations = 100; // max forced redemptions per mint/redeem call
-    uint256 public constant maxDailyStabilityFee = 548 * 1e12; // 0.0548% per day; ~20% per year
-    uint256 public constant maxSpeculationFee = 10 * 1e16; // 10% (unused: TODO upstream)
-    uint256 public constant speculationPeriod = 10 * 1e16; // (unused: TODO upstream)
+    uint256 public constant numRedemptionIterations = 100; // max number of forced redemption iterations per mint/redeem call (to avoid out-of-gas errors in extreme cases) 
+    uint256 public constant maxDailyStabilityFee = 548 * 1e12 ; // 0.0548% per day; ~20% per year
+    uint256 public constant maxSpeculationFee = 10 * 1e16 ; // 10%
+    uint256 public constant speculationPeriod = 10 * 1e16 ; // 10%
 
     address public immutable treasury;
     uint256 public immutable treasuryFee;
@@ -113,22 +28,23 @@ contract Tectonic is ERC20, ReentrancyGuard {
     uint256 public volumenMintEC = 0;
     uint256 public volumenRedeemEC = 0;
 
-    // TODO(upstream): positive interest on staked stable coins
-    // TODO(upstream): speculation fee
-    // TODO(upstream): limits on transactions that reduce the reserve ratio when it is already low
-    // TODO(upstream): volume based spreads for minting and redeeming stable coins
+    
 
-    address[] public holders; // 1-based index; 0 is reserved for non-holders
+    // TODO: implement positive interest on staked stable coins
+    // TODO: implement speculation fee
+    // TODO: implement limits on transactions that reduce reserve ratio (e.g. redeem, sell equity coins) when reserve ratio is below a certain threshold, to prevent the reserve ratio from dropping too quickly during times of low reserve.
+    // TODO: implement volume based spreads for minting and redeeming stable coins to incentivize trading when the reserve ratio is low and disincentivize trading when the reserve ratio is high, to help stabilize the reserve ratio around the target.
+
+
+    address[] public holders; // 1-based index, 0 is reserved for non-holders (to distinguish from the default value of the mapping)
     mapping(address => uint256) public holderIndexes;
-    mapping(address => uint256) public timestamp; // last chargeStabilityFee time per address
+    mapping(address => uint256) public timestamp; // timestamp of the last chargeStabilityFee action for each address
 
     function updateHolder(address a) internal {
-        if (holderIndexes[a] == 0 && balanceOf(a) > 0) {
-            // add new holder
+        if (holderIndexes[a] == 0 && balanceOf(a) > 0) { // add new holder
             holders.push(a);
             holderIndexes[a] = holders.length - 1;
-        } else if (holderIndexes[a] != 0 && balanceOf(a) == 0) {
-            // remove former holder
+        } else if (holderIndexes[a] != 0 && balanceOf(a) == 0) { // remove former holder
             uint256 index = holderIndexes[a];
             address lastHolder = holders[holders.length - 1];
             holders[index] = lastHolder;
@@ -138,111 +54,71 @@ contract Tectonic is ERC20, ReentrancyGuard {
         }
     }
 
-    /// @notice Number of stablecoin holders (excluding the address(0) sentinel).
-    /// @dev Added by the fork: lets the SDK and tests reason about forced-redemption
-    ///      eligibility without indexing the raw array.
-    function holderCount() public view returns (uint256) {
-        return holders.length - 1;
-    }
-
     event Minted(address indexed minter, address indexed receiver, uint256 amountSC, uint256 amountBC);
     event Redeemed(address indexed redeemer, address indexed receiver, uint256 amountSC, uint256 amountBC);
     event MintedEquityCoins(address indexed minter, address indexed receiver, uint256 amountEC, uint256 amountBC);
     event RedeemedEquityCoins(address indexed redeemer, address indexed receiver, uint256 amountEC, uint256 amountBC);
-    event ForcedRedemptions(
-        uint256 totalRedeemedAmountSC, uint256 initialRatio, uint256 finalRatio, address indexed origin, uint256 refund
-    );
+    event ForcedRedemptions(uint256 totalRedeemedAmountSC, uint256 initialRatio, uint256 finalRatio, address indexed origin, uint256 refund);
     event ChargedStabilityFee(address indexed holder, uint256 feeAmount);
     event BatchChargedStabilityFee(uint256 start, uint256 iterations, uint256 totalFeeAmount, address indexed origin, uint256 refund);
 
-    constructor(
-        address oracleAddress,
-        address _treasury,
-        uint256 _treasuryFee,
-        uint256 _fee,
-        uint256 _criticalReserveRatio,
-        uint256 _safeReserveRatio
-    ) ERC20("StableCoin", "SC") payable {
-        // PATCH 9: validate the parameter constraints the paper states in
-        // section 2.11 (non-negative fees summing below 1, and
-        // 1 < rcrit < rsafe < 2). Upstream accepts any values, so a deployment
-        // with rsafe == D makes stabilityFee() divide by zero on every
-        // transfer, mint and redeem — a permanently bricked contract with no
-        // signal at deploy time. Failing here costs one transaction; failing
-        // later costs the deployment.
-        require(oracleAddress != address(0), "Tectonic: oracle is the zero address");
-        require(_treasury != address(0), "Tectonic: treasury is the zero address");
-        require(_fee + _treasuryFee < D, "Tectonic: fees consume the entire payment");
-        require(_criticalReserveRatio > D, "Tectonic: rcrit must exceed 1");
-        require(_safeReserveRatio > _criticalReserveRatio, "Tectonic: rsafe must exceed rcrit");
-        require(_safeReserveRatio < 2 * D, "Tectonic: rsafe must be below 2");
+    // Stablecoin supply created at deployment and owned by no address, so that
+    // totalSupply() — and therefore L() — can never return to zero. See the
+    // constructor for why this is tracked rather than minted.
+    uint256 public immutable seedSupply;
 
-        equityCoin = new Coin("EquityCoin", "EC");
-        treasury = _treasury;
-        treasuryFee = _treasuryFee;
-        fee = _fee;
+    /// Includes the unowned seed, so the sum of balances is less than
+    /// totalSupply() by exactly seedSupply.
+    function totalSupply() public view override returns (uint256) {
+        return super.totalSupply() + seedSupply;
+    }
+
+    constructor(address oracleAddress, address _treasury, uint256 _treasuryFee, uint256 _fee, uint256 _superCriticalReserveRatio, uint256 _criticalReserveRatio, uint256 _safeReserveRatio) ERC20("StableCoin", "SC") payable {
+        require(D < _superCriticalReserveRatio && _superCriticalReserveRatio < _criticalReserveRatio && _criticalReserveRatio < _safeReserveRatio, "Tectonic: reserve ratios must satisfy 1 < superCritical < critical < safe");
+        require(_treasury != address(0), "Tectonic: treasury cannot be the zero address"); // fees sent there would be burned
+        treasury = _treasury; treasuryFee = _treasuryFee; fee = _fee;
+        superCriticalReserveRatio = _superCriticalReserveRatio;
         criticalReserveRatio = _criticalReserveRatio;
         safeReserveRatio = _safeReserveRatio;
         oracle = IOracle(oracleAddress);
-        holders.push(address(0)); // reserve index 0 for non-holders
+
+        // The deployment payment seeds both supplies. Nobody owns the seeded
+        // coins, so nobody can redeem them, so the reserve and both supplies
+        // are permanently non-zero and every quantity used as a denominator
+        // stays well defined without per-call guards.
+        //
+        // Split evenly: half the payment backs stablecoins and the remainder
+        // becomes equity. The split matters — backing the whole payment with
+        // stablecoins would put L == R and leave equity at zero from the first
+        // block, which is the very state this is meant to avoid. An even split
+        // starts the protocol at a reserve ratio of exactly 2.
+        require(msg.value > 0, "Tectonic: deployment must seed the reserve");
+        uint256 scSeedValue = msg.value / 2;
+        uint256 scPrice = oracle.readData();
+        require(scPrice > 0, "Tectonic: oracle price must be positive");
+        seedSupply = (msg.value * D) / (2 * scPrice); // multiply before dividing; equals (scSeedValue * D) / scPrice up to rounding
+        require(seedSupply > 0, "Tectonic: seed too small to back a stablecoin");
+
+        // No equity coins exist yet, so their price is 1 and the remaining
+        // value maps one-to-one onto equity coin supply.
+        equityCoin = new Coin("EquityCoin", "RC", msg.value - scSeedValue);
+
+        holders.push(address(0)); // reserve 0 index for non-holders
     }
 
-    // ---------------------------------------------------------------------
-    // Reserve, Liabilities, Equity (in wei) and Reserve Ratio
-    // ---------------------------------------------------------------------
-
-    function R() public view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function L() public view returns (uint256) {
-        return (totalSupply() * scPriceRedeem()) / D;
-    }
-
-    function E() public view returns (uint256) {
-        return R() - L();
-    }
-
-    /// PATCH 1: with no liabilities the reserve ratio is unbounded. Upstream
-    /// divided by zero here, which made the first mint on a fresh deployment
-    /// revert and left the contract permanently unusable.
-    function ratio() public view returns (uint256) {
-        uint256 l = L();
-        if (l == 0) return type(uint256).max;
-        return D * R() / l;
-    }
-
-    /// PATCH 4: guard division by zero (informational view only).
-    function leverage() public view returns (uint256) {
-        uint256 e = E();
-        if (e == 0) return type(uint256).max;
-        return D * L() / e;
-    }
-
-    /// PATCH 4: guard division by zero (informational view only).
-    function cushion() public view returns (uint256) {
-        uint256 l = L();
-        if (l == 0) return type(uint256).max;
-        return D * E() / l;
-    }
-
-    /// PATCH 6: guard division by zero before any equity coin exists.
-    function yieldFromStabilityFeeDaily() public view returns (uint256) {
-        uint256 ecSupply = equityCoin.totalSupply();
-        if (ecSupply == 0) return 0;
-        uint256 p = ecPrice();
-        if (p == 0) return 0;
-        return (stabilityFee() * totalSupply() * scPriceRedeem()) / (ecSupply * p * D);
-    }
-
-    // ---------------------------------------------------------------------
-    // Stablecoin operations
-    // ---------------------------------------------------------------------
+    // Reserve, Liabilities, Equity (in weis) and Reserve Ratio
+    function R() public view returns (uint256) { return address(this).balance; }
+    function L() public view returns (uint256) { return (totalSupply() * scPriceRedeem()) / D; }
+    function E() public view returns (uint256) { return R() - L();}
+    function ratio() public view returns (uint256) { return D * R() / L(); } // never below superCriticalReserveRatio, because of how scPriceRedeem() is defined
+    function leverage() public view returns (uint256) { return D * L() / E(); }
+    function cushion() public view returns (uint256) { return D * E() / L(); } // TODO
+    function yieldFromStabilityFeeDaily() public view returns (uint256) { 
+        return (stabilityFee() * totalSupply() * scPriceRedeem()) / (equityCoin.totalSupply() * ecPrice() * D);
+    }    
 
     function mint(address receiver) external payable nonReentrant {
-        if (ratio() < criticalReserveRatio) {
-            _forceRedemptions(numRedemptionIterations); // PATCH 2
-        }
+        if (ratio() < criticalReserveRatio) { _forceRedemptions(numRedemptionIterations); }
         uint256 scP = scPriceMint();
         uint256 amountBC = deductFees(msg.value);
         uint256 amountSC = (amountBC * D) / scP;
@@ -253,9 +129,8 @@ contract Tectonic is ERC20, ReentrancyGuard {
     function redeem(uint256 amountSC, address receiver) external nonReentrant {
         _redeem(amountSC, msg.sender, receiver);
     }
-
-    /// PATCH 2: `nonReentrant` removed. Every caller is already guarded; the
-    /// nested acquisition made redeem() and all forced redemptions revert.
+    // No `nonReentrant` here: every caller already holds the guard, and taking it
+    // again reverts (OpenZeppelin's ReentrancyGuard rejects nested acquisition).
     function _redeem(uint256 amountSC, address from, address receiver) internal {
         uint256 scP = scPriceRedeem();
         uint256 value = (amountSC * scP) / D;
@@ -265,130 +140,94 @@ contract Tectonic is ERC20, ReentrancyGuard {
         emit Redeemed(from, receiver, amountSC, amountBC);
     }
 
-    /// PATCH 2: external guarded entry point; internal logic split out so that
-    /// already-guarded callers (mint, mintEquityCoins, redeemEquityCoins) can
-    /// reuse it without re-entering the guard.
-    function forceRedemptions(uint256 maxIterations) external nonReentrant {
+    // Guarded entry point for external callers. The logic lives in
+    // `_forceRedemptions` so that mint/mintEquityCoins/redeemEquityCoins, which
+    // already hold the guard, can reuse it without re-entering it.
+    function forceRedemptions(uint256 maxIterations) public nonReentrant {
         _forceRedemptions(maxIterations);
     }
 
     function _forceRedemptions(uint256 maxIterations) internal {
-        uint256 n = holderCount();
-        if (n == 0) return; // PATCH 3: upstream computed `% 0` and reverted
+        // Nothing to redeem from. Required by the seeded supply: the seed is
+        // owned by no address, so the protocol now starts with a positive
+        // stablecoin supply and an empty holder set, and the index arithmetic
+        // below would compute `% 0` and panic.
+        if (holders.length <= 1) return;
 
         uint256 gasStart = gasleft();
         uint256 iterations = 0;
         uint256 totalRedeemedAmountSC = 0;
         uint256 initialRatio = ratio();
-        // pseudo-random starting index for fairness among holders
-        uint256 i = 1 + (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % n);
+        // Only the starting index for fairness among holders; which holders get redeemed is not a
+        // secret worth protecting, so a predictable source is acceptable.
+        // slither-disable-next-line weak-prng
+        uint256 i = 1 + (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % (holders.length - 1)); // choose a pseudo-random starting index to ensure fairness among holders
         while (ratio() < criticalReserveRatio && iterations < maxIterations && gasleft() > gasStart / 2) {
-            if (holderCount() == 0) break; // PATCH 3: supply fully redeemed
-            if (i >= holders.length) i = 1;
-
             address h = holders[i];
             uint256 b = balanceOf(h);
-            uint256 lengthBefore = holders.length;
-
-            if (b > 0) {
-                _redeem(b, h, h);
-                totalRedeemedAmountSC += b;
-            }
+            _redeem(b, h, h);
+            totalRedeemedAmountSC += b;
             iterations++;
-
-            // PATCH 3b: updateHolder removes a holder by swapping the last
-            // entry into the vacated slot, so after a redemption index `i`
-            // holds a different, unvisited holder. Advancing unconditionally
-            // would pass over them for the remainder of this sweep. Coverage
-            // still worked out in practice because the index wraps, but
-            // re-examining the slot matches the evident intent and makes the
-            // traversal independent of the wrap arithmetic.
-            if (holders.length == lengthBefore) i++;
+            i++; if (i >= holders.length) { i = 1; }
         }
         uint256 finalRatio = ratio();
-        // refund capped at 0.1% of the total amount redeemed
-        uint256 refund =
-            Math.min((gasStart - gasleft()) * block.basefee, totalRedeemedAmountSC * scPriceRedeem() / 1000 / D);
+        uint256 refund = Math.min((gasStart - gasleft()) * block.basefee, totalRedeemedAmountSC * scPriceRedeem() / 1000 / D); // cap refund to 0.1% of the total amount redeemed
         emit ForcedRedemptions(totalRedeemedAmountSC, initialRatio, finalRatio, tx.origin, refund);
-        if (refund > 0 && iterations > 0) send(tx.origin, refund);
+        if (refund > 0 && iterations > 0) { send(tx.origin, refund);}
     }
-
-    // ---------------------------------------------------------------------
-    // Stability fees
-    // ---------------------------------------------------------------------
 
     function balanceOfAfterStabilityFee(address a) public view returns (uint256) {
         return balanceOf(a) - stabilityFeeAmount(a);
     }
 
-    function stabilityFee() public view returns (uint256) {
-        uint256 r = ratio(); // r >= D by construction of L()
-        if (r > safeReserveRatio) return 0;
-        return ((safeReserveRatio - r) * maxDailyStabilityFee) / (safeReserveRatio - D);
+    function stabilityFee() public view returns (uint256) { 
+        uint256 r = ratio(); // r is always greater than or equal to superCriticalReserveRatio, because of how scPriceRedeem() is defined.
+        if (r > safeReserveRatio) return 0; // no stability fee when reserve ratio is above the safe threshold, to avoid penalizing users when the system has sufficient reserves
+        else return ((safeReserveRatio - r) * maxDailyStabilityFee) / (safeReserveRatio - superCriticalReserveRatio); // fee approaches maxDailyStabilityFee as the reserve ratio approaches its floor (superCriticalReserveRatio), to strongly incentivize redeeming stablecoins to increase the reserve ratio during times of low reserve.
     }
 
     function stabilityFeeAmount(address a) public view returns (uint256) {
+        uint256 t = block.timestamp - timestamp[a];
         uint256 f = stabilityFee();
-        if (f == 0) return 0;
-        uint256 last = timestamp[a];
-        if (last == 0) return 0; // never charged: no accrual window yet
-        uint256 t = block.timestamp - last;
-        uint256 amount = (balanceOf(a) * f * t) / (D * 1 days);
-        return Math.min(amount, balanceOf(a)); // never burn more than the balance
+        // slither-disable-next-line incorrect-equality
+        if (f == 0) return 0; // shortcut only: the formula below also yields 0 when f == 0
+        else return (balanceOf(a) * f * t) / (D * 1 days);
     }
 
-    /// PATCH 8: the timestamp is written BEFORE the burn.
-    ///
-    /// Upstream burned first and recorded the timestamp afterwards, which is
-    /// unbounded recursion: _burn triggers _update, _update calls
-    /// chargeStabilityFee(from) again, and because timestamp[a] has not been
-    /// updated yet the fee recomputes as non-zero every level. The balance
-    /// decays geometrically rather than reaching zero, so the recursion only
-    /// ends when the transaction runs out of gas.
-    ///
-    /// It fires whenever a fee is actually owed — i.e. whenever the reserve
-    /// ratio is at or below rsafe and any time has passed — so every transfer,
-    /// mint and redeem reverts in precisely the stressed conditions the
-    /// stability fee exists to handle.
-    ///
-    /// Writing the effect before the interaction makes the re-entrant call
-    /// compute t = 0, so it returns 0 and terminates immediately.
     function chargeStabilityFee(address a) public returns (uint256) {
         uint256 feeAmount = stabilityFeeAmount(a);
-        timestamp[a] = block.timestamp; // effect before interaction
+        // The timestamp is recorded before the burn, not after. `_burn` triggers
+        // `_update`, which calls this function again; if the timestamp had not
+        // moved yet the fee would recompute as non-zero and burn again, decaying
+        // the balance geometrically until the transaction runs out of gas. It
+        // fires whenever a fee is owed, i.e. once the reserve ratio reaches
+        // safeReserveRatio, so it would revert every transfer, mint and redeem.
+        // Recording first makes the re-entrant call see zero elapsed time.
+        timestamp[a] = block.timestamp;
         if (feeAmount > 0) _burn(a, feeAmount);
         emit ChargedStabilityFee(a, feeAmount);
         return feeAmount;
     }
 
-    function chargeStabilityFeeForManyHolders(uint256 start, uint256 maxIterations) external nonReentrant {
-        uint256 l = holderCount();
-        if (l == 0) return;
-
+    function chargeStabilityFeeForManyHolders(uint256 start, uint256 maxIterations) public {
         uint256 gasStart = gasleft();
+        uint256 l = holders.length - 1; // exclude 0 index which is reserved for non-holders
         uint256 iterations = 0;
-        uint256 i = 1 + start;
-        if (i >= holders.length) i = 1;
+        uint256 i = 1 + start; if (i >= holders.length) { i = 1; }
         uint256 totalFeeCharged = 0;
-        while (iterations < maxIterations && iterations < l && gasleft() > gasStart / 2) {
-            totalFeeCharged += chargeStabilityFee(holders[i]);
+        while (iterations < maxIterations && iterations < l && gasleft() > gasStart / 2) { // stop if we've iterated through all holders or if we've used more than half of the remaining gas to avoid out-of-gas errors
+            uint256 f = chargeStabilityFee(holders[i]);
+            totalFeeCharged += f;
             iterations++;
-            i++;
-            if (i >= holders.length) i = 1;
+            i++; if (i >= holders.length) { i = 1; }
         }
-        uint256 refund = Math.min((gasStart - gasleft()) * block.basefee, totalFeeCharged / 1000);
+        uint256 refund = Math.min((gasStart - gasleft()) * block.basefee, totalFeeCharged / 1000); // cap refund to 0.1% of the total fee charged to avoid draining the contract in extreme cases
         emit BatchChargedStabilityFee(start, iterations, totalFeeCharged, tx.origin, refund);
         if (refund > 0) send(tx.origin, refund);
     }
 
-    // ---------------------------------------------------------------------
-    // Equity coin operations
-    // ---------------------------------------------------------------------
-
     function mintEquityCoins(address receiver) external payable nonReentrant {
-        if (ratio() < criticalReserveRatio) {
-            _forceRedemptions(numRedemptionIterations); // PATCH 2
-        }
+        if (ratio() < criticalReserveRatio) { _forceRedemptions(numRedemptionIterations); }
         uint256 rcBP = ecPrice();
         uint256 amountBC = deductFees(msg.value);
         uint256 amountRC = (amountBC * D) / rcBP;
@@ -403,48 +242,48 @@ contract Tectonic is ERC20, ReentrancyGuard {
         equityCoin.burn(msg.sender, amountRC);
         send(receiver, amountBC);
         emit RedeemedEquityCoins(msg.sender, receiver, amountRC, amountBC);
-        if (ratio() < criticalReserveRatio) {
-            _forceRedemptions(numRedemptionIterations); // PATCH 2
-        }
+        if (ratio() < criticalReserveRatio) { _forceRedemptions(numRedemptionIterations); }
     }
-
-    // ---------------------------------------------------------------------
-    // Pricing
-    // ---------------------------------------------------------------------
 
     function deductFees(uint256 value) internal returns (uint256) {
         uint256 f = (value * fee) / D;
         uint256 fT = (value * treasuryFee) / D;
-        send(treasury, fT); // `f` stays in the contract, i.e. in the reserve
-        return value - f - fT;
+        send(treasury, fT); // transfer(address(this), f); // this happens implicitly, and thus `f` is effectively transfered to the reserve.
+        return value - f - fT; // amountBC
     }
 
-    /// price in wei for 1 whole stablecoin
-    function scPriceMint() public view returns (uint256) {
+    function scPriceMint() public view returns (uint256) { // price in weis for 1 whole coin.
         return oracle.readData();
     }
 
-    /// price in wei for 1 whole stablecoin
-    function scPriceRedeem() public view returns (uint256) {
-        uint256 scTargetPrice = oracle.readData();
+    // Let q = R / (N_SC * P_target_SC) and r_supcrit = superCriticalReserveRatio. Then:
+    //   P_redeem_SC = P_target_SC                 if q >= r_supcrit
+    //   P_redeem_SC = (1 / r_supcrit) * R / N_SC  if q <  r_supcrit
+    // q < r_supcrit is equivalent to R / (r_supcrit * N_SC) < P_target_SC, so this is
+    // the minimum of the two. Below the threshold, L = R / r_supcrit and the reserve
+    // ratio is pinned at r_supcrit instead of falling to 100%, so equity never reaches 0.
+    function scPriceRedeem() public view returns (uint256) { // price in weis for 1 whole coin.
+        // slither-disable-next-line calls-loop
+        uint256 scTargetPrice = oracle.readData(); // reached in a loop via chargeStabilityFeeForManyHolders, bounded by maxIterations and gas
         uint256 sSC = totalSupply();
-        return sSC == 0 ? scTargetPrice : Math.min(scTargetPrice, (R() * D) / sSC);
+        return sSC == 0 ? scTargetPrice : Math.min(scTargetPrice, (R() * D * D) / (superCriticalReserveRatio * sSC));
     }
 
-    /// PATCH 5: was `internal`; made public so the SDK can price equity coins.
-    function ecPrice() public view returns (uint256) {
+    // P_EC = E / N_EC for any q. Since E = R - L, this gives N_SC * P_redeem_SC + N_EC * P_EC = R,
+    // and when q < r_supcrit it equals ((r_supcrit - 1) / r_supcrit) * R / N_EC.
+    // Hence E >= ((r_supcrit - 1) / r_supcrit) * R > 0 whenever R > 0.
+    function ecPrice() public view returns (uint256){ // price in weis for 1 whole coin.
         uint256 sRC = equityCoin.totalSupply();
-        return sRC == 0 ? D : (E() * D) / sRC;
+        return equityCoin.totalSupply() == 0 ? D : (E() * D) / sRC;
     }
 
     function send(address receiver, uint256 amount) internal {
-        if (amount == 0) return;
-        (bool success,) = payable(receiver).call{value: amount}("");
+        // slither-disable-next-line calls-loop
+        (bool success, ) = payable(receiver).call{value: amount}(""); // reached in a loop via _forceRedemptions, bounded by maxIterations and gas
         require(success, "Transfer failed.");
     }
 
-    /// Charge stability fees before all token transfers, mints and burns, and
-    /// keep the holder set in sync afterwards.
+    // Override _update to charge stability fee before all token transfers, mints, and burns
     function _update(address from, address to, uint256 amount) internal override {
         if (from != address(0)) chargeStabilityFee(from);
         if (to != address(0)) chargeStabilityFee(to);

@@ -5,14 +5,19 @@ import {Test} from "forge-std/Test.sol";
 import {Tectonic} from "../src/Tectonic.sol";
 import {MockOracle} from "../src/MockOracle.sol";
 
-/// @notice Tests for the local Tectonic dev fork.
+/// @notice Tests for tectonic-local, StablePay's copy of the Tectonic contracts.
 ///
-/// Tests tagged REGRESSION document a bug in the upstream draft: each of them
-/// fails against StabilityNexus/Tectonic-EVM-Contracts (commit e657330) and
-/// passes here. They double as an executable bug report.
+/// tectonic-local/src is synced verbatim from
+/// DeveloperAmrit/Tectonic-EVM-Contracts @ fix-4-6-fresh (cd459dd). These tests
+/// exercise that code as StablePay uses it; they do not patch it.
 ///
 /// Tests tagged SDK pin the arithmetic that tectonic-sdk reimplements in JS.
 /// If one of these changes, the SDK's cost calculation must change with it.
+///
+/// Tests tagged UPSTREAM BUG pin a known defect of the synced contract with
+/// vm.expectRevert, so they double as an executable bug report. When the fix
+/// lands upstream and is synced here, the test fails: replace it with a test of
+/// the fixed behaviour.
 contract TectonicTest is Test {
     Tectonic tectonic;
     MockOracle oracle;
@@ -25,57 +30,120 @@ contract TectonicTest is Test {
     uint256 constant D = 1e18;
     uint256 constant FEE = 15 * 1e15; // 1.5%
     uint256 constant TREASURY_FEE = 5 * 1e15; // 0.5%
+    uint256 constant SUPER_CRITICAL_RATIO = 11 * 1e17; // 1.1
     uint256 constant CRITICAL_RATIO = 12 * 1e17; // 1.2
     uint256 constant SAFE_RATIO = 15 * 1e17; // 1.5
     uint256 constant INITIAL_PRICE = 5 * 1e14; // 0.0005 BC per SC
+    uint256 constant SEED = 10 ether; // sent with the deployment, as DeployLocal does
 
     function setUp() public {
         oracle = new MockOracle(INITIAL_PRICE);
-        tectonic = new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, SAFE_RATIO);
+        tectonic = _deploy(SEED);
         vm.deal(consumer, 1000 ether);
         vm.deal(lp, 1000 ether);
         vm.deal(merchant, 1 ether);
     }
 
+    function _deploy(uint256 seed) internal returns (Tectonic) {
+        return new Tectonic{value: seed}(
+            address(oracle), treasury, TREASURY_FEE, FEE, SUPER_CRITICAL_RATIO, CRITICAL_RATIO, SAFE_RATIO
+        );
+    }
+
     // -----------------------------------------------------------------
-    // Bootstrap
+    // Deployment and bootstrap
     // -----------------------------------------------------------------
 
-    /// REGRESSION (patch 1): upstream ratio() divided by zero at zero supply,
-    /// and mint() reads ratio() before doing anything, so a fresh deployment
-    /// could never accept its first mint.
+    /// The deployment payment is split evenly into an unowned stablecoin seed
+    /// and an unowned equity seed, so both supplies start non-zero and the
+    /// protocol starts at a reserve ratio of exactly 2.
+    function test_DeploymentSeedsBothSuppliesAtRatioTwo() public view {
+        assertEq(tectonic.R(), SEED, "the whole payment is reserve");
+        assertEq(tectonic.seedSupply(), (SEED * D) / (2 * INITIAL_PRICE), "stablecoin seed backs half the payment");
+        assertEq(tectonic.totalSupply(), tectonic.seedSupply(), "only the unowned seed exists");
+        assertEq(tectonic.equityCoin().totalSupply(), SEED - SEED / 2, "equity seed is the other half at price 1");
+        assertEq(tectonic.ratio(), 2 * D, "starts at ratio 2");
+        assertEq(_holderCount(), 0, "nobody owns the seed");
+    }
+
     function test_FirstMintSucceedsOnFreshDeployment() public {
-        assertEq(tectonic.totalSupply(), 0);
-        assertEq(tectonic.ratio(), type(uint256).max, "empty protocol is infinitely reserved");
-
         vm.prank(consumer);
         tectonic.mint{value: 1 ether}(consumer);
-
-        assertGt(tectonic.totalSupply(), 0, "stablecoins were minted");
-        assertGt(tectonic.R(), 0, "reserve received the basecoin");
+        assertGt(tectonic.balanceOf(consumer), 0, "stablecoins were minted");
+        assertEq(_holderCount(), 1);
     }
 
-    /// REGRESSION (patch 1): same for the equity coin path.
     function test_FirstEquityMintSucceedsOnFreshDeployment() public {
+        uint256 before = tectonic.equityCoin().totalSupply();
         vm.prank(lp);
         tectonic.mintEquityCoins{value: 10 ether}(lp);
-        assertGt(tectonic.equityCoin().totalSupply(), 0);
+        assertGt(tectonic.equityCoin().balanceOf(lp), 0);
+        assertGt(tectonic.equityCoin().totalSupply(), before);
     }
 
-    /// REGRESSION (patch 3): upstream computed `% (holders.length - 1)`, which
-    /// panics when there are no holders.
+    /// The seed is owned by no address, so the holder set starts empty while
+    /// the supply is positive. The sweep must return instead of computing `% 0`.
     function test_ForceRedemptionsWithNoHoldersIsANoop() public {
-        assertEq(tectonic.holderCount(), 0);
+        assertEq(_holderCount(), 0);
         tectonic.forceRedemptions(10); // must not revert
+    }
+
+    // -----------------------------------------------------------------
+    // Constructor validation
+    // -----------------------------------------------------------------
+
+    string constant RATIO_ORDER = "Tectonic: reserve ratios must satisfy 1 < superCritical < critical < safe";
+
+    function test_ConstructorRejectsSuperCriticalRatioAtOrBelowOne() public {
+        vm.expectRevert(bytes(RATIO_ORDER));
+        new Tectonic{value: SEED}(address(oracle), treasury, TREASURY_FEE, FEE, D, CRITICAL_RATIO, SAFE_RATIO);
+    }
+
+    function test_ConstructorRejectsSuperCriticalRatioAtOrAboveCritical() public {
+        vm.expectRevert(bytes(RATIO_ORDER));
+        new Tectonic{value: SEED}(
+            address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, CRITICAL_RATIO, SAFE_RATIO
+        );
+    }
+
+    function test_ConstructorRejectsCriticalRatioAtOrAboveSafe() public {
+        vm.expectRevert(bytes(RATIO_ORDER));
+        new Tectonic{value: SEED}(
+            address(oracle), treasury, TREASURY_FEE, FEE, SUPER_CRITICAL_RATIO, SAFE_RATIO, SAFE_RATIO
+        );
+    }
+
+    function test_ConstructorRejectsZeroTreasury() public {
+        vm.expectRevert("Tectonic: treasury cannot be the zero address");
+        new Tectonic{value: SEED}(
+            address(oracle), address(0), TREASURY_FEE, FEE, SUPER_CRITICAL_RATIO, CRITICAL_RATIO, SAFE_RATIO
+        );
+    }
+
+    function test_ConstructorRejectsAnUnseededDeployment() public {
+        vm.expectRevert("Tectonic: deployment must seed the reserve");
+        _deploy(0);
+    }
+
+    function test_ConstructorRejectsASeedTooSmallToBackAStablecoin() public {
+        // seedSupply = seed * D / (2 * price) floors to 0 once 2 * price > seed * D.
+        oracle.setPrice(D);
+        vm.expectRevert("Tectonic: seed too small to back a stablecoin");
+        _deploy(1);
+    }
+
+    function test_ConstructorAcceptsValidParameters() public view {
+        assertEq(tectonic.superCriticalReserveRatio(), SUPER_CRITICAL_RATIO);
+        assertEq(tectonic.criticalReserveRatio(), CRITICAL_RATIO);
+        assertEq(tectonic.safeReserveRatio(), SAFE_RATIO);
+        assertEq(tectonic.fee(), FEE);
+        assertEq(tectonic.treasuryFee(), TREASURY_FEE);
     }
 
     // -----------------------------------------------------------------
     // Core operations
     // -----------------------------------------------------------------
 
-    /// REGRESSION (patch 2): upstream's `_redeem` was `internal nonReentrant`
-    /// and its caller `redeem` was also nonReentrant, so redeem() always
-    /// reverted with ReentrancyGuardReentrantCall.
     function test_RedeemSucceeds() public {
         vm.prank(consumer);
         tectonic.mint{value: 1 ether}(consumer);
@@ -111,7 +179,7 @@ contract TectonicTest is Test {
         vm.prank(consumer);
         tectonic.mint{value: 1 ether}(merchant);
         // Everything except the treasury fee remains in the contract.
-        assertEq(tectonic.R(), 1 ether - (1 ether * TREASURY_FEE / D), "protocol fee retained");
+        assertEq(tectonic.R(), SEED + 1 ether - (1 ether * TREASURY_FEE / D), "protocol fee retained");
     }
 
     /// Direct stablecoin payment: the merchant is paid by ERC-20 transfer.
@@ -200,9 +268,8 @@ contract TectonicTest is Test {
         assertEq(tectonic.stabilityFeeAmount(consumer), 0, "nothing accrues");
     }
 
-    /// REGRESSION (patch 7): with timestamp[a] defaulting to 0, a new holder's
-    /// accrual window started at the UNIX epoch and the first charge could burn
-    /// their entire balance.
+    /// _update charges the receiver before crediting them, at a zero balance,
+    /// which opens their accrual window on receipt rather than at the epoch.
     function test_NewHolderIsNotChargedForTimeBeforeTheyHeldCoins() public {
         vm.prank(consumer);
         tectonic.mint{value: 1 ether}(consumer);
@@ -210,7 +277,6 @@ contract TectonicTest is Test {
 
         uint256 balance = tectonic.balanceOf(consumer);
         assertGt(tectonic.stabilityFee(), 0, "we are below the safe threshold");
-        // No time has passed since the holder was first charged on receipt.
         assertEq(tectonic.stabilityFeeAmount(consumer), 0, "no retroactive accrual");
         assertEq(tectonic.balanceOfAfterStabilityFee(consumer), balance);
     }
@@ -229,10 +295,8 @@ contract TectonicTest is Test {
         assertEq(tectonic.balanceOfAfterStabilityFee(consumer), balance - accrued);
     }
 
-    /// REGRESSION (patch 8): upstream wrote timestamp[a] AFTER the burn, so
-    /// _burn -> _update -> chargeStabilityFee recursed until it ran out of gas.
-    /// Any transfer, mint or redeem with a fee owed consumed the whole block
-    /// gas limit and reverted. This test costs ~1e9 gas against upstream.
+    /// chargeStabilityFee records the timestamp before burning, so the
+    /// re-entrant charge from _burn -> _update sees zero elapsed time.
     function test_ChargingAFeeDoesNotRecurseUntilOutOfGas() public {
         vm.prank(consumer);
         tectonic.mint{value: 1 ether}(consumer);
@@ -249,8 +313,8 @@ contract TectonicTest is Test {
         assertEq(tectonic.stabilityFeeAmount(consumer), 0, "the accrual window reset");
     }
 
-    /// The same recursion, reached through an ordinary transfer — which is how
-    /// a StablePay direct payment would have hit it.
+    /// A StablePay direct payment with a fee owed: the sender must pay from
+    /// their post-fee balance.
     function test_TransferWithAFeeOwedDoesNotRunOutOfGas() public {
         vm.prank(consumer);
         tectonic.mint{value: 1 ether}(consumer);
@@ -278,172 +342,106 @@ contract TectonicTest is Test {
     // Triggered redemptions
     // -----------------------------------------------------------------
 
-    /// REGRESSION (patch 2): upstream, any mint that tripped the critical
-    /// threshold reverted, because mint() (nonReentrant) called
-    /// forceRedemptions() (also nonReentrant).
+    /// A mint that finds the protocol below critical runs the sweep first,
+    /// inside the same guarded call, instead of reverting.
     function test_MintBelowCriticalRatioTriggersRedemptionsInsteadOfReverting() public {
-        vm.prank(consumer);
-        tectonic.mint{value: 5 ether}(consumer);
-        _depressRatioBelowCritical();
+        _twoHoldersBelowCritical();
 
-        assertLt(tectonic.ratio(), CRITICAL_RATIO, "we are below critical");
-        assertGt(tectonic.balanceOf(consumer), 0, "consumer holds a position");
-
-        // The incoming payment must be small relative to the reserve.
-        //
-        // `msg.value` is credited to the contract balance BEFORE the function
-        // body runs, so R() inside mint() already includes it and the ratio is
-        // partly self-healed before the threshold is even tested. A large
-        // enough mint lifts the ratio back above rcrit on its own and no
-        // redemption is triggered — correct behaviour, and the reason an
-        // earlier version of this test failed with a 1 ether mint.
+        // Kept small relative to the reserve: msg.value is in R() before the
+        // threshold is tested, so a large payment lifts the ratio by itself
+        // and no redemption is triggered.
         address newBuyer = makeAddr("newBuyer");
         vm.deal(newBuyer, 10 ether);
         vm.prank(newBuyer);
         tectonic.mint{value: 0.01 ether}(newBuyer);
 
-        assertEq(tectonic.balanceOf(consumer), 0, "prior holder was force-redeemed");
+        assertTrue(
+            tectonic.balanceOf(consumer) == 0 || tectonic.balanceOf(merchant) == 0,
+            "a prior holder was force-redeemed"
+        );
         assertGt(tectonic.balanceOf(newBuyer), 0, "new buyer still received their coins");
     }
 
+    function test_ForcedRedemptionPaysTheHolderInBasecoin() public {
+        _twoHoldersBelowCritical();
+        uint256 consumerBC = consumer.balance;
+        uint256 merchantBC = merchant.balance;
+
+        tectonic.forceRedemptions(10);
+
+        assertGe(tectonic.ratio(), CRITICAL_RATIO, "the sweep restored the ratio");
+        assertTrue(consumer.balance > consumerBC || merchant.balance > merchantBC, "a redeemed holder was paid out");
+    }
+
     /// FINDING: a mint can pass the critical-ratio check and still leave the
-    /// protocol below the critical ratio afterwards.
-    ///
-    /// Two effects compose. `msg.value` lands in the reserve before the check,
-    /// so the ratio tested is the *post-payment, pre-issuance* one — here that
-    /// is ~2.2, comfortably above rcrit, so no redemption is triggered. The
-    /// coins are then issued at the oracle target price, which adds almost as
-    /// much to liabilities as the payment added to the reserve, pulling the
-    /// ratio back toward 1 — here to ~1.056, below rcrit.
-    ///
-    /// Minting diluting the ratio toward 1 is inherent to the design (Tectonic
-    /// deliberately has no minimum reserve ratio for minting). The consequence
-    /// worth knowing is that "after a mint, r >= rcrit" is NOT an invariant,
-    /// and the *next* operation will trigger redemptions — potentially against
-    /// the merchant who just received these coins.
+    /// protocol below the critical ratio afterwards. msg.value is in the
+    /// reserve before the check, then the coins are issued at the target price,
+    /// pulling the ratio back down. "After a mint, r >= rcrit" is therefore not
+    /// an invariant, and the next operation will trigger redemptions —
+    /// possibly against the merchant who just received these coins.
     function test_MintPassesTheCheckYetLeavesTheRatioBelowCritical() public {
         vm.prank(consumer);
         tectonic.mint{value: 5 ether}(consumer);
         _depressRatioBelowCritical();
-
         uint256 heldBefore = tectonic.balanceOf(consumer);
 
         address whale = makeAddr("whale");
         vm.deal(whale, 100 ether);
         vm.prank(whale);
-        tectonic.mint{value: 5 ether}(whale);
+        tectonic.mint{value: 10 ether}(whale);
 
-        // The payment lifted the ratio above rcrit before the check, so nobody
-        // was redeemed on the way in.
         assertEq(tectonic.balanceOf(consumer), heldBefore, "no redemption was triggered");
-
-        // But issuing the coins diluted it straight back below rcrit.
         assertLt(tectonic.ratio(), CRITICAL_RATIO, "issuance diluted the ratio below critical");
-        assertGe(tectonic.ratio(), D, "the ratio still cannot fall below 1");
+        assertGe(tectonic.ratio(), SUPER_CRITICAL_RATIO, "but never below the super-critical floor");
     }
 
-    function test_ForcedRedemptionPaysTheHolderInBasecoin() public {
+    /// UPSTREAM BUG: the sweep reads balanceOf(h) and redeems exactly that, but
+    /// _burn's _update charges the stability fee first, so the burn runs
+    /// against `balance - fee` and reverts. Below rcrit a fee is always owed
+    /// once any time has passed, so forced redemption — and every mint that
+    /// triggers it — reverts exactly when the protocol is under-reserved.
+    function test_UPSTREAM_BUG_SweepRevertsWhenAStabilityFeeIsOwed() public {
+        _twoHoldersBelowCritical();
+        vm.warp(block.timestamp + 1 days);
+        assertGt(tectonic.stabilityFeeAmount(consumer), 0, "a fee is owed");
+
+        vm.expectRevert(); // ERC20InsufficientBalance
+        tectonic.forceRedemptions(10);
+    }
+
+    /// UPSTREAM BUG: forced payouts use send(), which reverts when the holder
+    /// rejects basecoin, so one such holder blocks every sweep.
+    function test_UPSTREAM_BUG_AHolderThatRejectsBasecoinBlocksTheSweep() public {
+        RejectsBasecoin hostile = new RejectsBasecoin();
         vm.prank(consumer);
-        tectonic.mint{value: 5 ether}(consumer);
+        tectonic.mint{value: 5 ether}(address(hostile));
         _depressRatioBelowCritical();
 
-        uint256 bcBefore = consumer.balance;
+        vm.expectRevert("Transfer failed.");
         tectonic.forceRedemptions(10);
-
-        assertGt(consumer.balance, bcBefore, "redeemed holder was paid out");
-        assertEq(tectonic.balanceOf(consumer), 0, "position was fully redeemed");
     }
 
-    /// PATCH 3b: nobody is stranded behind updateHolder's swap-and-pop.
-    ///
-    /// The sweep stops as soon as the ratio is restored, which is the whole
-    /// point of triggered redemptions — so "every holder was redeemed" is only
-    /// a fair expectation when the deficit is deep enough to need all of them.
-    /// The ratio is driven to just above parity here for that reason.
-    function test_ForcedRedemptionsVisitEveryHolderWhenAllAreNeeded() public {
-        address[3] memory buyers = [makeAddr("h1"), makeAddr("h2"), makeAddr("h3")];
-        for (uint256 j = 0; j < buyers.length; j++) {
-            vm.deal(buyers[j], 10 ether);
-            vm.prank(buyers[j]);
-            tectonic.mint{value: 2 ether}(buyers[j]);
-        }
-        assertEq(tectonic.holderCount(), 3, "three holders");
-
-        _setRatioTarget(D + D / 1000); // ~1.001: no partial sweep can restore rcrit
-        assertLt(tectonic.ratio(), CRITICAL_RATIO, "below critical");
-
-        tectonic.forceRedemptions(10);
-
-        for (uint256 j = 0; j < buyers.length; j++) {
-            assertEq(tectonic.balanceOf(buyers[j]), 0, "every holder was redeemed");
-        }
-        assertEq(tectonic.holderCount(), 0, "holder set emptied");
-    }
-
-    /// The general guarantee, which holds whatever the deficit: a sweep never
-    /// stops while the ratio is still below critical AND eligible holders
-    /// remain unvisited. Either it fixed the ratio or it ran out of holders.
-    function test_ForcedRedemptionsStopOnlyWhenRestoredOrExhausted() public {
-        address[3] memory buyers = [makeAddr("g1"), makeAddr("g2"), makeAddr("g3")];
-        for (uint256 j = 0; j < buyers.length; j++) {
-            vm.deal(buyers[j], 10 ether);
-            vm.prank(buyers[j]);
-            tectonic.mint{value: 2 ether}(buyers[j]);
-        }
-
+    /// UPSTREAM BUG (Bruno's point on PR 24): once every holder is redeemed,
+    /// only the unowned seed is left, the ratio can still be below critical,
+    /// and the loop indexes past the end of `holders` (panic 0x32). The seed
+    /// "belongs to no address", so nothing in the sweep can redeem it.
+    function test_UPSTREAM_BUG_SweepPanicsWhenHoldersRunOutBelowCritical() public {
+        vm.prank(consumer);
+        tectonic.mint{value: 0.1 ether}(consumer); // small next to the seed
         _depressRatioBelowCritical();
+
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
         tectonic.forceRedemptions(10);
-
-        if (tectonic.ratio() < CRITICAL_RATIO) {
-            assertEq(tectonic.holderCount(), 0, "stopped below critical with holders remaining");
-        }
-    }
-
-    // -----------------------------------------------------------------
-    // Constructor validation (PATCH 9)
-    // -----------------------------------------------------------------
-
-    /// rsafe == D is the dangerous case: it makes stabilityFee() divide by
-    /// zero on every operation. Paired with a valid rcrit so the rcrit check
-    /// does not fire first and mask what is being tested.
-    function test_ConstructorRejectsSafeRatioEqualToOne() public {
-        vm.expectRevert("Tectonic: rsafe must exceed rcrit");
-        new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, D);
-    }
-
-    function test_ConstructorRejectsCriticalRatioBelowOne() public {
-        vm.expectRevert("Tectonic: rcrit must exceed 1");
-        new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, D - 1, SAFE_RATIO);
-    }
-
-    function test_ConstructorRejectsSafeRatioAtOrAboveTwo() public {
-        vm.expectRevert("Tectonic: rsafe must be below 2");
-        new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, 2 * D);
-    }
-
-    function test_ConstructorRejectsFeesThatConsumeThePayment() public {
-        vm.expectRevert("Tectonic: fees consume the entire payment");
-        new Tectonic(address(oracle), treasury, D / 2, D / 2, CRITICAL_RATIO, SAFE_RATIO);
-    }
-
-    function test_ConstructorRejectsZeroOracle() public {
-        vm.expectRevert("Tectonic: oracle is the zero address");
-        new Tectonic(address(0), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, SAFE_RATIO);
-    }
-
-    function test_ConstructorAcceptsValidParameters() public {
-        Tectonic t = new Tectonic(address(oracle), treasury, TREASURY_FEE, FEE, CRITICAL_RATIO, SAFE_RATIO);
-        assertEq(t.criticalReserveRatio(), CRITICAL_RATIO);
-        assertEq(t.safeReserveRatio(), SAFE_RATIO);
     }
 
     // -----------------------------------------------------------------
     // Invariants
     // -----------------------------------------------------------------
 
-    /// Paper eq. 3: liabilities are bounded by the reserve, so the protocol is
-    /// never accounting-insolvent and the ratio never drops below 1.
-    function testFuzz_LiabilitiesNeverExceedReserve(uint96 rawMint, uint96 rawPrice) public {
+    /// scPriceRedeem() caps liabilities at R / r_supcrit, so the ratio never
+    /// falls below the super-critical floor, equity never reaches zero, and
+    /// the two coins' claims never exceed the reserve.
+    function testFuzz_RatioNeverFallsBelowTheSuperCriticalFloor(uint96 rawMint, uint96 rawPrice) public {
         uint256 amount = uint256(rawMint);
         vm.assume(amount > 1e12 && amount < 100 ether);
         vm.assume(rawPrice > 1e8);
@@ -452,13 +450,39 @@ contract TectonicTest is Test {
         tectonic.mint{value: amount}(consumer);
         oracle.setPrice(uint256(rawPrice));
 
-        assertLe(tectonic.L(), tectonic.R(), "L <= R");
-        if (tectonic.L() > 0) assertGe(tectonic.ratio(), D, "ratio >= 1");
+        uint256 r = tectonic.R();
+        assertLe(tectonic.L(), r, "L <= R");
+        assertGe(tectonic.ratio(), SUPER_CRITICAL_RATIO - 1, "ratio >= r_supcrit (up to flooring)");
+        assertGe(tectonic.E() + 1, ((SUPER_CRITICAL_RATIO - D) * r) / SUPER_CRITICAL_RATIO, "equity floor");
+        assertGt(tectonic.ecPrice(), 0, "equity coins always have a price");
     }
 
     // -----------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------
+
+    /// Owned holders: `holders` is 1-based with address(0) at index 0.
+    function _holderCount() internal view returns (uint256 n) {
+        while (true) {
+            try tectonic.holders(n + 1) returns (address) {
+                n++;
+            } catch {
+                return n;
+            }
+        }
+    }
+
+    /// Two holders, ratio between r_supcrit and rcrit, no time elapsed (so no
+    /// stability fee is owed yet). Two are needed because redeeming one
+    /// restores the ratio: with one, the sweep would run out of holders
+    /// (see test_UPSTREAM_BUG_SweepPanicsWhenHoldersRunOutBelowCritical).
+    function _twoHoldersBelowCritical() internal {
+        vm.prank(consumer);
+        tectonic.mint{value: 5 ether}(consumer);
+        vm.prank(consumer);
+        tectonic.mint{value: 5 ether}(merchant);
+        _depressRatioBelowCritical();
+    }
 
     /// Raise the oracle price so liabilities grow and the ratio falls between
     /// the critical and safe thresholds.
@@ -468,19 +492,26 @@ contract TectonicTest is Test {
         require(tectonic.ratio() >= CRITICAL_RATIO, "helper: expected ratio >= critical");
     }
 
-    /// Raise the oracle price far enough that the ratio falls below critical.
+    /// Raise the oracle price so the ratio falls between r_supcrit and rcrit.
     function _depressRatioBelowCritical() internal {
-        _setRatioTarget(D + (CRITICAL_RATIO - D) / 2);
+        _setRatioTarget((SUPER_CRITICAL_RATIO + CRITICAL_RATIO) / 2);
         require(tectonic.ratio() < CRITICAL_RATIO, "helper: expected ratio < critical");
     }
 
     /// Solve for the oracle price that puts the reserve ratio at `target`.
-    /// ratio = R*D / L and L = supply * min(price, R*D/supply) / D,
-    /// so while the target price binds: ratio = R*D*D / (supply*price).
+    /// While the target price binds (target >= r_supcrit),
+    /// ratio = R*D / L = R*D*D / (supply*price).
     function _setRatioTarget(uint256 target) internal {
         uint256 supply = tectonic.totalSupply();
-        require(supply > 0, "helper: need outstanding supply");
         uint256 price = (tectonic.R() * D * D) / (supply * target);
         oracle.setPrice(price);
+    }
+}
+
+/// A holder whose receive() reverts, e.g. a contract wallet that cannot
+/// accept basecoin.
+contract RejectsBasecoin {
+    receive() external payable {
+        revert("no basecoin");
     }
 }

@@ -130,6 +130,26 @@ test("toBaseUnits rejects precision loss and malformed input", () => {
   assert.throws(() => toBaseUnits("", 18), /not a valid decimal amount/);
 });
 
+test("toBaseUnits rejects JS numbers that may have lost precision", () => {
+  // Float rounding happens before the SDK sees the value: 0.1 + 0.2 arrives
+  // as 0.30000000000000004, and quoting it would price a different invoice.
+  assert.throws(() => toBaseUnits(0.1 + 0.2, 18), /not a safe integer/);
+  assert.throws(() => toBaseUnits(1.5, 18), /not a safe integer/);
+  assert.throws(() => toBaseUnits(Number.MAX_SAFE_INTEGER + 1, 0), /not a safe integer/);
+  assert.throws(() => toBaseUnits(NaN, 18), /not a safe integer/);
+  assert.throws(() => toBaseUnits(Infinity, 18), /not a safe integer/);
+  // Safe integers, decimal strings and bigints are all exact.
+  assert.equal(toBaseUnits(Number.MAX_SAFE_INTEGER, 0), BigInt(Number.MAX_SAFE_INTEGER));
+  assert.equal(toBaseUnits("1.5", 18), 15n * 10n ** 17n);
+  assert.equal(toBaseUnits("9007199254740993", 0), 9007199254740993n);
+});
+
+test("pricing functions reject unsafe integer numbers", () => {
+  const fees = { fee: 0n, treasuryFee: 0n };
+  assert.throws(() => stablecoinsForPayment(2 ** 53 + 2, 1n, fees), /not a safe integer/);
+  assert.throws(() => payoutForRedemption(1.5, 1n, fees), /not a safe integer/);
+});
+
 test("toBaseUnits rejects negative amounts on every input path", () => {
   assert.throws(() => toBaseUnits(-1, 18), /is negative/);
   assert.throws(() => toBaseUnits("-1", 18), /is negative/);
