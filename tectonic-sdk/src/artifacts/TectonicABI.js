@@ -23,6 +23,7 @@ export const TECTONIC_ABI = [
   { inputs: [], name: "treasury", outputs: [{ type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "fee", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "treasuryFee", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "superCriticalReserveRatio", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "criticalReserveRatio", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "safeReserveRatio", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
 
@@ -31,6 +32,8 @@ export const TECTONIC_ABI = [
   { inputs: [], name: "L", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "E", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "ratio", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
+  // stablecoins created at deployment and owned by no address; included in totalSupply()
+  { inputs: [], name: "seedSupply", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
 
   // --- prices ---
   { inputs: [], name: "scPriceMint", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },

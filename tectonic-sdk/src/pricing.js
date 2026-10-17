@@ -128,7 +128,19 @@ export function ceilDiv(numerator, denominator) {
  * so it is rejected here rather than propagating a negative bigint into the
  * pricing math (where it would only surface much later, if at all).
  *
- * @param {string|number|bigint} value
+ * A JS `number` is accepted only when it is a safe integer. A fractional
+ * number may already have been rounded before it arrives (0.1 + 0.2 is
+ * 0.30000000000000004), and an integer above 2^53 - 1 has lost precision, so
+ * quoting either would silently price a different amount. Pass fractional or
+ * large token amounts as a decimal string, e.g. "1.5" or "9007199254740993".
+ *
+ * A bigint is taken to be in base units already and is returned unchanged:
+ * with 18 decimals, one whole token is 10n ** 18n, and 1n is one base unit.
+ * Use a bigint only for a value that is already scaled, such as an amount
+ * read from the contract.
+ *
+ * @param {string|number|bigint} value decimal string or safe-integer number in
+ *   whole-token units, or a bigint already in base units
  * @param {number} decimals
  * @returns {bigint}
  */
@@ -139,6 +151,7 @@ export function toBaseUnits(value, decimals) {
     }
     return value;
   }
+  if (typeof value === "number") requireSafeInteger(value);
   const str = String(value).trim();
   if (str.startsWith("-")) {
     throw new Error(`Tectonic: "${value}" is negative; amounts must be non-negative`);
@@ -179,12 +192,23 @@ export function fromBaseUnits(value, decimals, displayDecimals) {
 function toBigInt(value) {
   if (typeof value === "bigint") return value;
   if (typeof value === "number") {
-    if (!Number.isInteger(value)) {
-      throw new Error(`Tectonic: ${value} is not an integer; pass a bigint or decimal string`);
-    }
+    requireSafeInteger(value);
     return BigInt(value);
   }
   return BigInt(value);
+}
+
+/**
+ * Reject a `number` that cannot be converted exactly: fractions (already
+ * subject to float rounding) and integers beyond Number.MAX_SAFE_INTEGER.
+ */
+function requireSafeInteger(value) {
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(
+      `Tectonic: ${value} is not a safe integer and may already have lost precision; ` +
+        `pass a decimal string or a bigint`
+    );
+  }
 }
 
 function requirePositive(value, name) {
