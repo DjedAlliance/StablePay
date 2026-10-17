@@ -132,9 +132,15 @@ export function ceilDiv(numerator, denominator) {
  * number may already have been rounded before it arrives (0.1 + 0.2 is
  * 0.30000000000000004), and an integer above 2^53 - 1 has lost precision, so
  * quoting either would silently price a different amount. Pass fractional or
- * large amounts as a decimal string or a bigint.
+ * large token amounts as a decimal string, e.g. "1.5" or "9007199254740993".
  *
- * @param {string|number|bigint} value decimal string, bigint, or safe-integer number
+ * A bigint is taken to be in base units already and is returned unchanged:
+ * with 18 decimals, one whole token is 10n ** 18n, and 1n is one base unit.
+ * Use a bigint only for a value that is already scaled, such as an amount
+ * read from the contract.
+ *
+ * @param {string|number|bigint} value decimal string or safe-integer number in
+ *   whole-token units, or a bigint already in base units
  * @param {number} decimals
  * @returns {bigint}
  */

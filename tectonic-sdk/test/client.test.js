@@ -181,6 +181,51 @@ test("buildMintTx survives a failed gas estimate", async () => {
   assert.equal(tx.to, ADDRESS);
 });
 
+function failingEstimateClient(overrides) {
+  const publicClient = stubClient(overrides);
+  publicClient.estimateGas = async () => {
+    throw new Error("execution reverted: ERC20InsufficientBalance");
+  };
+  return new TectonicClient({ address: ADDRESS, publicClient });
+}
+
+test("buildMintTx blocks the payment when the estimate fails below the critical ratio", async () => {
+  // Below rcrit, mint() runs forced redemptions first, which the synced
+  // contract reverts on whenever a stability fee is owed.
+  const client = failingEstimateClient({ ratio: 115n * 10n ** 16n });
+  await client.init();
+
+  await assert.rejects(
+    () => client.buildMintTx({ payer: PAYER, receiver: MERCHANT, value: 10n ** 15n }),
+    /below its critical reserve ratio[\s\S]*ERC20InsufficientBalance/
+  );
+});
+
+test("buildMintTx blocks below the critical ratio even before init()", async () => {
+  const client = failingEstimateClient({ ratio: 115n * 10n ** 16n });
+  await assert.rejects(
+    () => client.buildMintTx({ payer: PAYER, receiver: MERCHANT, value: 10n ** 15n }),
+    /below its critical reserve ratio/
+  );
+});
+
+test("buildMintTx still succeeds below the critical ratio when the estimate succeeds", async () => {
+  const { client } = makeClient({ ratio: 115n * 10n ** 16n });
+  await client.init();
+  const tx = await client.buildMintTx({ payer: PAYER, receiver: MERCHANT, value: 10n ** 15n });
+  assert.equal(tx.gas, (200000n * 150n) / 100n);
+});
+
+test("buildMintTx falls back to the wallet when the ratio cannot be read", async () => {
+  const client = failingEstimateClient();
+  await client.init();
+  client.publicClient.readContract = async () => {
+    throw new Error("RPC down");
+  };
+  const tx = await client.buildMintTx({ payer: PAYER, receiver: MERCHANT, value: 10n ** 15n });
+  assert.equal(tx.gas, undefined);
+});
+
 test("buildTransferTx targets the protocol contract, which is the token", async () => {
   const { client } = makeClient();
   await client.init();
