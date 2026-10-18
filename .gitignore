@@ -1,9 +1,9 @@
 # Repository-wide ignores for the StablePay monorepo.
 #
-# NOTE: `dist/` is deliberately NOT ignored. stablepay-sdk and djed-sdk both
-# commit their built bundles, because the example app and merchant integrations
-# resolve the package through `main`/`module`, which point at dist/. Ignoring it
-# would silently stop new builds from being committed.
+# NOTE: `dist/` is deliberately NOT ignored. stablepay-sdk commits its built
+# bundle, because the example app and merchant integrations resolve the
+# package through `main`/`module`, which point at dist/. Ignoring it would
+# silently stop new builds from being committed.
 # (example/dist IS ignored — see stablepay-sdk/example/.gitignore.)
 
 # --- Dependencies ---
