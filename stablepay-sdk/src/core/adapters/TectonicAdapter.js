@@ -29,9 +29,7 @@ export class TectonicAdapter {
       throw new Error(
         "TectonicAdapter: network config has no usable `tectonicAddress`" +
           (this.address ? " (it is the zero address)" : "") +
-          ". For the local development chain, call " +
-          "StablePay.useLocalTectonic('0x...') with the address printed by " +
-          "tectonic-local/script/DeployLocal.s.sol."
+          "."
       );
     }
     this.client = new TectonicClient({

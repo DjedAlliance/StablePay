@@ -71,7 +71,15 @@ The conversion happens automatically, by interacting with the stablecoin contrac
 
 StablePay uses stablecoins based on the [Tectonic stablecoin protocol](https://github.com/StabilityNexus/Tectonic-EVM-Contracts), deployed on EVM-compatible chains.
 
-> **Status:** Tectonic is not yet deployed on any public network, so there are currently no live payment networks. Development runs against a local deployment — see [tectonic-local](https://github.com/DjedAlliance/StablePay/tree/main/tectonic-local). Support for the Djed protocol was removed once StablePay moved to Tectonic; if you need it, use a release tagged before that change.
+> **Status:** StablePay runs on the public Tectonic deployment on Ethereum Sepolia (testnet). There are no mainnet networks yet. Support for the Djed protocol was removed once StablePay moved to Tectonic; if you need it, use a release tagged before that change.
+
+### Supported networks
+
+| Network | Chain ID | Tectonic (StableCoin) | EquityCoin | Oracle |
+|---|---|---|---|---|
+| Ethereum Sepolia | 11155111 | [`0xea262fB18992ddE398a5b6fa7A4F879FfB262aC1`](https://sepolia.etherscan.io/address/0xea262fB18992ddE398a5b6fa7A4F879FfB262aC1) | [`0x22B2f0CAf598B9E5FCf888fB89eD50c2F4735F1a`](https://sepolia.etherscan.io/address/0x22B2f0CAf598B9E5FCf888fB89eD50c2F4735F1a) | [`0x4f007748666F2b941AA014E5a2a41841e681A32b`](https://sepolia.etherscan.io/address/0x4f007748666F2b941AA014E5a2a41841e681A32b) (Chainlink ETH/USD, inverted) |
+
+The network registry lives in [utils/config.js](https://github.com/DjedAlliance/StablePay/blob/main/stablepay-sdk/src/utils/config.js). Deployment parameters are recorded in [Deployments.md](https://github.com/StabilityNexus/Tectonic-EVM-Contracts/blob/main/Deployments.md) in Tectonic-EVM-Contracts.
 
 
 ## **Code Structure Overview**
@@ -87,7 +95,7 @@ The main files of the Tectonic SDK and their purposes are:
 * [constants.js](https://github.com/DjedAlliance/StablePay/blob/main/tectonic-sdk/src/constants.js) - fixed-point conventions and reserve-health bands.
 * [artifacts/TectonicABI.js](https://github.com/DjedAlliance/StablePay/blob/main/tectonic-sdk/src/artifacts/TectonicABI.js) - the contract ABI, as a JS module rather than JSON so it needs no bundler configuration.
 
-There is also a [tectonic-local folder](https://github.com/DjedAlliance/StablePay/tree/main/tectonic-local) containing a Foundry project used to run Tectonic on a local chain during development. It is a development aid and will be removed once a public deployment exists.
+To check the SDK against the live Sepolia deployment, run `npm run smoke` in `tectonic-sdk`. It is read-only by default; pass `--mint` with `PRIVATE_KEY` set to a funded Sepolia account to also send a real mint.
 
 The main files of the StablePay widget and their purposes are:
 
