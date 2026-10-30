@@ -16,7 +16,7 @@ const PAYER = "0x3333333333333333333333333333333333333333";
 function stubClient(overrides = {}) {
   const state = {
     fee: 15n * 10n ** 15n,
-    treasuryFee: 5n * 10n ** 15n,
+    devFee: 5n * 10n ** 15n,
     decimals: 18,
     superCriticalReserveRatio: 11n * 10n ** 17n,
     criticalReserveRatio: 12n * 10n ** 17n,
@@ -86,8 +86,20 @@ test("init caches the immutable parameters", async () => {
 
   const callsAfterInit = publicClient.calls.length;
   await client.quoteMint("10");
-  // The quote should read the price but must not re-read the fees.
+  // The quote should read the price but must not re-read the immutable fee.
   assert.ok(!publicClient.calls.slice(callsAfterInit).includes("fee"), "fees were re-read");
+});
+
+test("quotes use the current devFee, not the one read at init", async () => {
+  const { client, publicClient } = makeClient();
+  await client.init();
+  const before = await client.quoteMint("10");
+
+  publicClient.state.devFee = 2n * 10n ** 16n;
+  const after = await client.quoteMint("10");
+
+  assert.equal(client.fees.devFee, 2n * 10n ** 16n);
+  assert.ok(after.requiredBC > before.requiredBC, "a higher devFee raises the quote");
 });
 
 test("init produces an actionable error when the address is not a Tectonic contract", async () => {

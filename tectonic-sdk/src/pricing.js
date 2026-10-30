@@ -5,27 +5,26 @@ import { D, ROUNDING_SAFETY_WEI } from "./constants.js";
  * instances: everything here is a function of values already read from chain,
  * which makes it directly unit-testable.
  *
- * These functions mirror Tectonic.sol exactly. The Solidity side is pinned by
- * the `SDK` tests in tectonic-local/test/Tectonic.t.sol; if one side changes,
- * the other must change with it.
+ * These functions mirror Tectonic.sol in Tectonic-EVM-Contracts exactly; if
+ * one side changes, the other must change with it.
  */
 
-/** @typedef {{ fee: bigint, treasuryFee: bigint }} Fees */
+/** @typedef {{ fee: bigint, devFee: bigint }} Fees */
 
 /**
  * Net fraction of a payment that survives fees, scaled by D.
  *
- * Solidity: deductFees() returns value - value*fee/D - value*treasuryFee/D.
+ * Solidity: deductFees() returns value - value*fee/D - value*devFee/D.
  *
  * @param {Fees} fees
- * @returns {bigint} D - fee - treasuryFee
+ * @returns {bigint} D - fee - devFee
  */
-export function netFactor({ fee, treasuryFee }) {
-  const net = D - toBigInt(fee) - toBigInt(treasuryFee);
+export function netFactor({ fee, devFee }) {
+  const net = D - toBigInt(fee) - toBigInt(devFee);
   if (net <= 0n) {
     throw new Error(
-      `Tectonic: fees consume the entire payment (fee + treasuryFee >= D). ` +
-        `fee=${fee}, treasuryFee=${treasuryFee}`
+      `Tectonic: fees consume the entire payment (fee + devFee >= D). ` +
+        `fee=${fee}, devFee=${devFee}`
     );
   }
   return net;
@@ -44,14 +43,14 @@ export function netFactor({ fee, treasuryFee }) {
 export function stablecoinsForPayment(amountBC, scPriceMint, fees) {
   const value = toBigInt(amountBC);
   const price = requirePositive(scPriceMint, "scPriceMint");
-  const { fee, treasuryFee } = fees;
+  const { fee, devFee } = fees;
 
   // Reproduce the contract's two separate floor divisions rather than folding
   // them into one: the results differ by up to 1 wei, and the merchant-facing
   // guarantee depends on matching the contract exactly.
   const f = (value * toBigInt(fee)) / D;
-  const fT = (value * toBigInt(treasuryFee)) / D;
-  const net = value - f - fT;
+  const fD = (value * toBigInt(devFee)) / D;
+  const net = value - f - fD;
 
   return (net * D) / price;
 }
@@ -95,8 +94,8 @@ export function payoutForRedemption(amountSC, scPriceRedeem, fees) {
   const price = requirePositive(scPriceRedeem, "scPriceRedeem");
   const value = (amount * price) / D;
   const f = (value * toBigInt(fees.fee)) / D;
-  const fT = (value * toBigInt(fees.treasuryFee)) / D;
-  return value - f - fT;
+  const fD = (value * toBigInt(fees.devFee)) / D;
+  return value - f - fD;
 }
 
 /**
@@ -104,8 +103,8 @@ export function payoutForRedemption(amountSC, scPriceRedeem, fees) {
  * @param {Fees} fees
  * @returns {string} e.g. "2.00"
  */
-export function totalFeePercent({ fee, treasuryFee }) {
-  const total = toBigInt(fee) + toBigInt(treasuryFee);
+export function totalFeePercent({ fee, devFee }) {
+  const total = toBigInt(fee) + toBigInt(devFee);
   // Two decimal places, computed in integer arithmetic.
   const basisPoints = (total * 10000n) / D;
   return (Number(basisPoints) / 100).toFixed(2);

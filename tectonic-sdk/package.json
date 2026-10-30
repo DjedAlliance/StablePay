@@ -11,7 +11,7 @@
   "files": ["src"],
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
-    "smoke": "node scripts/smoke-local.mjs"
+    "smoke": "node scripts/smoke-sepolia.mjs"
   },
   "peerDependencies": {
     "viem": "^2.0.0"
