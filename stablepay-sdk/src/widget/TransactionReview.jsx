@@ -5,7 +5,7 @@ import { Transaction } from "../core/Transaction";
 import { parseUnits } from "viem";
 import styles from "../styles/PricingCard.css"; 
 
-const TransactionReview = ({ onTransactionComplete }) => {
+const TransactionReview = ({ onTransactionComplete, onTransactionUnderpaid }) => {
   const {
     networkSelector,
     selectedNetwork,
@@ -174,9 +174,10 @@ const TransactionReview = ({ onTransactionComplete }) => {
     // Conflating the two produces nonsense like "5 ETH".
     let paidAmount = contextTransactionDetails.amount;
     let paidSymbol = selectedToken.symbol;
+    let invoicedSC = null;
+    const receiver = contextTransactionDetails.receivingAddress;
 
     try {
-      const receiver = contextTransactionDetails.receivingAddress;
 
       if (selectedToken.key === "native") {
         // Re-quote immediately before signing. The oracle price moves, and a
@@ -188,6 +189,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
 
         setTradeDataBuySc(quote.requiredBCFormatted);
         paidAmount = quote.requiredBCFormatted; // basecoin, not the SC invoice
+        invoicedSC = quote.amountSC;
 
         builtTx = await transaction.buyStablecoins(account, receiver, quote.requiredBC);
         builtTx = { ...builtTx, value: quote.requiredBC, account };
@@ -261,6 +263,39 @@ const TransactionReview = ({ onTransactionComplete }) => {
       setMessage(`Waiting for transaction confirmation...`);
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      if (receipt.status === 'success' && invoicedSC !== null) {
+        const check = transaction.verifyNativePayment({
+          receipt,
+          receiver,
+          expectedSC: invoicedSC,
+        });
+
+        if (!check.ok) {
+          setMessage(
+            `Payment confirmed, but the merchant was credited ${check.mintedFormatted} ` +
+              `${stablecoinSymbol} instead of ${contextTransactionDetails.amount} ${stablecoinSymbol}. ` +
+              `The price or fee changed after the quote. Please contact the merchant to settle the difference.`
+          );
+          setInteractionState('UNDERPAID');
+
+          if (onTransactionUnderpaid) {
+            onTransactionUnderpaid({
+              txHash,
+              network: selectedNetwork,
+              token: selectedToken?.key,
+              amount: paidAmount,
+              tokenSymbol: paidSymbol,
+              amountInvoiced: contextTransactionDetails?.amount,
+              amountReceived: check.mintedFormatted,
+              shortfall: check.shortfallFormatted,
+              receivedSymbol: stablecoinSymbol,
+              receivingAddress: receiver,
+            });
+          }
+          return;
+        }
+      }
 
       if (receipt.status === 'success') {
         setMessage(`Transaction confirmed successfully!`);
@@ -407,7 +442,7 @@ const TransactionReview = ({ onTransactionComplete }) => {
         </div>
       )}
 
-      {interactionState !== 'SUCCESS' && (
+      {interactionState !== 'SUCCESS' && interactionState !== 'UNDERPAID' && (
         <div className={styles.walletButtonContainer}>
           {!account && (
             <button className={styles.walletButton} onClick={handleConnectWallet} disabled={isConnecting}>

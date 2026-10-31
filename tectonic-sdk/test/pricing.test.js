@@ -15,7 +15,7 @@ import {
   ceilDiv,
 } from "../src/pricing.js";
 
-const FEES = { fee: 15n * 10n ** 15n, treasuryFee: 5n * 10n ** 15n }; // 1.5% + 0.5%
+const FEES = { fee: 15n * 10n ** 15n, devFee: 5n * 10n ** 15n }; // 1.5% + 0.5%
 const PRICE = 5n * 10n ** 14n; // 0.0005 BC per stablecoin
 
 /**
@@ -23,19 +23,19 @@ const PRICE = 5n * 10n ** 14n; // 0.0005 BC per stablecoin
  * straight from the Solidity. The round-trip property below is only meaningful
  * because this mirrors the contract's flooring behaviour exactly.
  */
-function contractMint(value, price, { fee, treasuryFee }) {
+function contractMint(value, price, { fee, devFee }) {
   const f = (value * fee) / D;
-  const fT = (value * treasuryFee) / D;
-  const amountBC = value - f - fT;
+  const fD = (value * devFee) / D;
+  const amountBC = value - f - fD;
   return (amountBC * D) / price;
 }
 
 test("netFactor subtracts both fees from D", () => {
-  assert.equal(netFactor(FEES), D - FEES.fee - FEES.treasuryFee);
+  assert.equal(netFactor(FEES), D - FEES.fee - FEES.devFee);
 });
 
 test("netFactor rejects fees that consume the whole payment", () => {
-  assert.throws(() => netFactor({ fee: D, treasuryFee: 1n }), /consume the entire payment/);
+  assert.throws(() => netFactor({ fee: D, devFee: 1n }), /consume the entire payment/);
 });
 
 test("stablecoinsForPayment matches the contract's arithmetic", () => {
@@ -54,10 +54,10 @@ test("PROPERTY: the merchant is never short-changed, across amounts and prices",
   const amounts = [1n, 7n, 1000n, 10n ** 6n, 10n ** 12n, 10n ** 18n, 12345678901234567n, 10n ** 24n];
   const prices = [1n, 3n, 10n ** 6n, 5n * 10n ** 14n, 10n ** 18n, 7n * 10n ** 19n];
   const feeSets = [
-    { fee: 0n, treasuryFee: 0n },
-    { fee: 15n * 10n ** 15n, treasuryFee: 5n * 10n ** 15n },
-    { fee: 10n ** 17n, treasuryFee: 3n * 10n ** 16n }, // 10% + 3%
-    { fee: 1n, treasuryFee: 1n }, // pathologically small
+    { fee: 0n, devFee: 0n },
+    { fee: 15n * 10n ** 15n, devFee: 5n * 10n ** 15n },
+    { fee: 10n ** 17n, devFee: 3n * 10n ** 16n }, // 10% + 3%
+    { fee: 1n, devFee: 1n }, // pathologically small
   ];
 
   let checked = 0;
@@ -105,13 +105,13 @@ test("payoutForRedemption applies both fees", () => {
   const gross = (amountSC * PRICE) / D;
   const payout = payoutForRedemption(amountSC, PRICE, FEES);
   assert.ok(payout < gross);
-  assert.equal(payout, gross - (gross * FEES.fee) / D - (gross * FEES.treasuryFee) / D);
+  assert.equal(payout, gross - (gross * FEES.fee) / D - (gross * FEES.devFee) / D);
 });
 
 test("totalFeePercent formats the combined rate", () => {
   assert.equal(totalFeePercent(FEES), "2.00");
-  assert.equal(totalFeePercent({ fee: 0n, treasuryFee: 0n }), "0.00");
-  assert.equal(totalFeePercent({ fee: 25n * 10n ** 14n, treasuryFee: 0n }), "0.25");
+  assert.equal(totalFeePercent({ fee: 0n, devFee: 0n }), "0.00");
+  assert.equal(totalFeePercent({ fee: 25n * 10n ** 14n, devFee: 0n }), "0.25");
 });
 
 test("toBaseUnits parses decimals exactly, without floating point", () => {
@@ -145,7 +145,7 @@ test("toBaseUnits rejects JS numbers that may have lost precision", () => {
 });
 
 test("pricing functions reject unsafe integer numbers", () => {
-  const fees = { fee: 0n, treasuryFee: 0n };
+  const fees = { fee: 0n, devFee: 0n };
   assert.throws(() => stablecoinsForPayment(2 ** 53 + 2, 1n, fees), /not a safe integer/);
   assert.throws(() => payoutForRedemption(1.5, 1n, fees), /not a safe integer/);
 });
@@ -183,7 +183,7 @@ test("REGRESSION: a fee scaled for 1e24 fails loudly instead of mispricing", () 
   assert.equal(D, 10n ** 18n);
   const misScaledFee = 15n * 10n ** 21n; // 1.5% at 1e24 scaling
   assert.throws(
-    () => requiredPaymentForStablecoins(10n ** 18n, PRICE, { fee: misScaledFee, treasuryFee: 0n }),
+    () => requiredPaymentForStablecoins(10n ** 18n, PRICE, { fee: misScaledFee, devFee: 0n }),
     /consume the entire payment/
   );
   // The correctly scaled fee prices normally.

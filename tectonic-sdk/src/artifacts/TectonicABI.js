@@ -12,17 +12,19 @@
  *
  *     forge inspect Tectonic abi
  *
- * and paste the array below. Keep it in sync with
- * StablePay/tectonic-local/src/Tectonic.sol.
+ * and paste the array below. Keep it in sync with src/Tectonic.sol in
+ * Tectonic-EVM-Contracts at the commit listed in its Deployments.md.
  */
 export const TECTONIC_ABI = [
   // --- protocol parameters (public state variables) ---
   { inputs: [], name: "D", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "oracle", outputs: [{ type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "equityCoin", outputs: [{ type: "address" }], stateMutability: "view", type: "function" },
-  { inputs: [], name: "treasury", outputs: [{ type: "address" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "dev", outputs: [{ type: "address" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "pendingDev", outputs: [{ type: "address" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "devFeeReceiver", outputs: [{ type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "fee", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [], name: "treasuryFee", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "devFee", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "superCriticalReserveRatio", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "criticalReserveRatio", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "safeReserveRatio", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
@@ -122,6 +124,15 @@ export const TECTONIC_ABI = [
       { indexed: false, name: "amountBC", type: "uint256" },
     ],
     name: "Redeemed",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, name: "previousDevFee", type: "uint256" },
+      { indexed: false, name: "newDevFee", type: "uint256" },
+    ],
+    name: "DevFeeUpdated",
     type: "event",
   },
   {

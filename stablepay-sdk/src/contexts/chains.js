@@ -62,40 +62,23 @@ export const etcMainnet = defineChain({
   testnet: false,
 });
 
-/**
- * Local anvil / Hardhat development chain.
- *
- * Only reachable when a developer explicitly opts in via
- * `useLocalTectonic()`; merchants never see it, because the `tectonic-local`
- * network entry carries a localhost RPC that no end user can reach.
- */
-export const localChain = defineChain({
-  id: 31337,
-  name: 'Local Chain',
-  network: 'localhost',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'Ether',
-    symbol: 'ETH',
-  },
+export const sepoliaChain = defineChain({
+  ...sepolia,
   rpcUrls: {
     default: {
-      http: ['http://127.0.0.1:8545'],
+      http: ['https://ethereum-sepolia-rpc.publicnode.com'],
     },
   },
-  testnet: true,
 });
 
 export const getChainByNetworkKey = (networkKey) => {
   switch (networkKey) {
     case 'sepolia':
-      return sepolia;
+      return sepoliaChain;
     case 'ethereum-classic':
       return etcMainnet;
     case 'milkomeda-mainnet':
       return milkomeda;
-    case 'tectonic-local':
-      return localChain;
     default:
       return null;
   }
@@ -112,8 +95,8 @@ export const getChainConfigForWallet = (networkKey) => {
           symbol: 'ETH',
           decimals: 18,
         },
-        rpcUrls: sepolia.rpcUrls.default.http,
-        blockExplorerUrls: sepolia.blockExplorers?.default?.url ? [sepolia.blockExplorers.default.url] : [],
+        rpcUrls: sepoliaChain.rpcUrls.default.http,
+        blockExplorerUrls: sepoliaChain.blockExplorers?.default?.url ? [sepoliaChain.blockExplorers.default.url] : [],
       };
     case 'ethereum-classic':
       return {
@@ -138,20 +121,6 @@ export const getChainConfigForWallet = (networkKey) => {
         },
         rpcUrls: ['https://rpc-mainnet-cardano-evm.c1.milkomeda.com'],
         blockExplorerUrls: ['https://explorer-mainnet-cardano-evm.c1.milkomeda.com'],
-      };
-    case 'tectonic-local':
-      return {
-        chainId: `0x${localChain.id.toString(16)}`, // 0x7a69
-        chainName: 'Local Chain (anvil)',
-        nativeCurrency: {
-          name: 'Ether',
-          symbol: 'ETH',
-          decimals: 18,
-        },
-        rpcUrls: ['http://127.0.0.1:8545'],
-        // No explorer for a local chain. Deliberately omitted rather than
-        // pointed at a public one, which would leak local tx hashes.
-        blockExplorerUrls: [],
       };
     default:
       return null;

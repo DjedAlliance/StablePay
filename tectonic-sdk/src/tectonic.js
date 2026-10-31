@@ -1,4 +1,4 @@
-import { createPublicClient, http, encodeFunctionData } from "viem";
+import { createPublicClient, http, encodeFunctionData, parseEventLogs } from "viem";
 import { TECTONIC_ABI } from "./artifacts/TectonicABI.js";
 import {
   D,
@@ -43,13 +43,14 @@ export class TectonicClient {
     this.publicClient =
       publicClient ?? createPublicClient({ chain, transport: http(rpcUrl) });
 
-    /** @type {null | {fee: bigint, treasuryFee: bigint, decimals: number, superCriticalReserveRatio: bigint, criticalReserveRatio: bigint, safeReserveRatio: bigint, equityCoin: string, oracle: string, symbol: string}} */
+    /** @type {null | {fee: bigint, devFee: bigint, decimals: number, superCriticalReserveRatio: bigint, criticalReserveRatio: bigint, safeReserveRatio: bigint, equityCoin: string, oracle: string, symbol: string}} */
     this.params = null;
   }
 
   /**
-   * Read the immutable protocol parameters once and cache them.
+   * Read the protocol parameters once and cache them.
    * Prices and ratios are deliberately NOT cached: they move every block.
+   * devFee can be changed by the contract's dev, so quotes re-read it.
    */
   async init() {
     const read = (functionName, args = []) =>
@@ -63,7 +64,7 @@ export class TectonicClient {
     try {
       const [
         fee,
-        treasuryFee,
+        devFee,
         decimals,
         superCriticalReserveRatio,
         criticalReserveRatio,
@@ -73,7 +74,7 @@ export class TectonicClient {
         symbol,
       ] = await Promise.all([
         read("fee"),
-        read("treasuryFee"),
+        read("devFee"),
         read("decimals"),
         read("superCriticalReserveRatio"),
         read("criticalReserveRatio"),
@@ -85,7 +86,7 @@ export class TectonicClient {
 
       this.params = {
         fee: BigInt(fee),
-        treasuryFee: BigInt(treasuryFee),
+        devFee: BigInt(devFee),
         decimals: Number(decimals),
         superCriticalReserveRatio: BigInt(superCriticalReserveRatio),
         criticalReserveRatio: BigInt(criticalReserveRatio),
@@ -107,16 +108,21 @@ export class TectonicClient {
     }
   }
 
-  /** @returns {{fee: bigint, treasuryFee: bigint}} */
+  /** @returns {{fee: bigint, devFee: bigint}} */
   get fees() {
     this._requireInit();
-    return { fee: this.params.fee, treasuryFee: this.params.treasuryFee };
+    return { fee: this.params.fee, devFee: this.params.devFee };
   }
 
   _requireInit() {
     if (!this.params) {
       throw new Error("TectonicClient: call init() before using the client");
     }
+  }
+
+  async _refreshDevFee() {
+    this.params.devFee = BigInt(await this._read("devFee"));
+    return this.params.devFee;
   }
 
   _read(functionName, args = []) {
@@ -219,7 +225,7 @@ export class TectonicClient {
     this._requireInit();
     const decimals = this.params.decimals ?? SC_DECIMALS;
     const amount = toBaseUnits(amountSC, decimals);
-    const price = await this.scPriceMint();
+    const [price] = await Promise.all([this.scPriceMint(), this._refreshDevFee()]);
     const requiredBC = requiredPaymentForStablecoins(amount, price, this.fees);
 
     return {
@@ -240,7 +246,7 @@ export class TectonicClient {
    */
   async quotePayment(amountBC) {
     this._requireInit();
-    const price = await this.scPriceMint();
+    const [price] = await Promise.all([this.scPriceMint(), this._refreshDevFee()]);
     const value = typeof amountBC === "bigint" ? amountBC : toBaseUnits(amountBC, 18);
     const amountSC = stablecoinsForPayment(value, price, this.fees);
     return {
@@ -259,7 +265,7 @@ export class TectonicClient {
     this._requireInit();
     const decimals = this.params.decimals ?? SC_DECIMALS;
     const amount = toBaseUnits(amountSC, decimals);
-    const price = await this.scPriceRedeem();
+    const [price] = await Promise.all([this.scPriceRedeem(), this._refreshDevFee()]);
     const payoutBC = payoutForRedemption(amount, price, this.fees);
     return {
       amountSC: amount,
@@ -315,12 +321,11 @@ export class TectonicClient {
       tx.gas = (estimate * GAS_LIMIT_MULTIPLIER_PERCENT) / 100n;
     } catch (error) {
       // Below the critical ratio, mint() first runs forced redemptions, and
-      // the synced Tectonic contract reverts there whenever a holder owes a
-      // stability fee (the sweep burns the pre-fee balance; see
-      // test_UPSTREAM_BUG_SweepRevertsWhenAStabilityFeeIsOwed). A failed
+      // the deployed Tectonic contract reverts there whenever a holder owes a
+      // stability fee (the sweep burns the pre-fee balance). A failed
       // estimate in that state almost certainly means the mint would revert,
       // so stop here instead of letting the payer sign a doomed transaction.
-      // Remove once the fix lands in Tectonic-EVM-Contracts and is synced.
+      // Remove once the fix lands in Tectonic-EVM-Contracts and is deployed.
       if (await this._isBelowCriticalRatio()) {
         throw new Error(
           "Tectonic: this payment cannot go through right now. The protocol is below its " +
@@ -356,6 +361,26 @@ export class TectonicClient {
     } catch {
       return false;
     }
+  }
+
+  mintedToReceiver(receipt, receiver) {
+    if (!receiver) throw new Error("mintedToReceiver: receiver is required");
+    const contract = this.address.toLowerCase();
+    const target = receiver.toLowerCase();
+    return parseEventLogs({ abi: TECTONIC_ABI, eventName: "Minted", logs: receipt?.logs ?? [] })
+      .filter(
+        (log) => log.address.toLowerCase() === contract && log.args.receiver.toLowerCase() === target
+      )
+      .reduce((total, log) => total + log.args.amountSC, 0n);
+  }
+
+  verifyMint({ receipt, receiver, expectedSC }) {
+    if (typeof expectedSC !== "bigint" || expectedSC <= 0n) {
+      throw new Error("verifyMint: expectedSC must be a positive bigint (base units)");
+    }
+    const minted = receipt?.status === "success" ? this.mintedToReceiver(receipt, receiver) : 0n;
+    const shortfall = minted >= expectedSC ? 0n : expectedSC - minted;
+    return { ok: shortfall === 0n, minted, expected: expectedSC, shortfall };
   }
 
   /**

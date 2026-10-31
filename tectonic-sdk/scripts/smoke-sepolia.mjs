@@ -1,5 +1,5 @@
 /**
- * End-to-end smoke test against a local Tectonic deployment.
+ * End-to-end smoke test against the Tectonic deployment on Ethereum Sepolia.
  *
  * This is the check the stubbed unit tests cannot make: it drives the real
  * contract on a real chain and asserts that the SDK's off-chain pricing agrees
@@ -7,35 +7,37 @@
  * correctness rests on — a merchant invoiced for N stablecoins receives at
  * least N stablecoins.
  *
- * Prerequisites:
- *   1. anvil running on http://127.0.0.1:8545
- *   2. tectonic-local/script/DeployLocal.s.sol broadcast against it
+ * By default it only reads from the chain. Pass --mint with PRIVATE_KEY set to
+ * a funded Sepolia account to also send a real mint to MERCHANT (defaults to
+ * the payer itself).
  *
  * Usage (from StablePay/tectonic-sdk):
- *   node scripts/smoke-local.mjs
- *   node scripts/smoke-local.mjs --amount 250
+ *   node scripts/smoke-sepolia.mjs
+ *   node scripts/smoke-sepolia.mjs --amount 2
+ *   PRIVATE_KEY=0x... node scripts/smoke-sepolia.mjs --mint
  */
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { createWalletClient, createPublicClient, http, formatEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { foundry } from "viem/chains";
+import { sepolia } from "viem/chains";
 import { TectonicClient } from "../src/tectonic.js";
-import { fromBaseUnits } from "../src/pricing.js";
+import { fromBaseUnits, stablecoinsForPayment } from "../src/pricing.js";
 
-const RPC = process.env.RPC_URL ?? "http://127.0.0.1:8545";
+const RPC = process.env.RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
 
-// anvil's deterministic accounts #0 and #1.
-const PAYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-const MERCHANT = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+const DEPLOYMENT = {
+  tectonic: "0xea262fB18992ddE398a5b6fa7A4F879FfB262aC1",
+  equityCoin: "0x22B2f0CAf598B9E5FCf888fB89eD50c2F4735F1a",
+  oracle: "0x4f007748666F2b941AA014E5a2a41841e681A32b",
+  fee: 10n ** 15n,
+  superCriticalReserveRatio: 105n * 10n ** 16n,
+  criticalReserveRatio: 110n * 10n ** 16n,
+  safeReserveRatio: 150n * 10n ** 16n,
+};
 
 const amountArgIndex = process.argv.indexOf("--amount");
-const INVOICE = amountArgIndex !== -1 ? process.argv[amountArgIndex + 1] : "100";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const manifestPath = resolve(here, "../../tectonic-local/deployments/local.json");
+const INVOICE = amountArgIndex !== -1 ? process.argv[amountArgIndex + 1] : "1";
+const MINT = process.argv.includes("--mint");
 
 let pass = 0;
 let fail = 0;
@@ -50,45 +52,35 @@ function check(label, condition, detail = "") {
   }
 }
 
-function loadManifest() {
-  try {
-    return JSON.parse(readFileSync(manifestPath, "utf8"));
-  } catch {
-    console.error(
-      `Could not read ${manifestPath}\n\n` +
-        `Deploy first:\n` +
-        `  cd ../tectonic-local\n` +
-        `  forge script script/DeployLocal.s.sol --rpc-url ${RPC} --broadcast \\\n` +
-        `    --private-key ${PAYER_KEY}\n`
-    );
-    process.exit(1);
-  }
-}
+const sameAddress = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 async function main() {
-  const manifest = loadManifest();
-  console.log(`Tectonic at ${manifest.tectonic} on ${RPC}\n`);
+  console.log(`Tectonic at ${DEPLOYMENT.tectonic} on Sepolia via ${RPC}\n`);
 
-  const account = privateKeyToAccount(PAYER_KEY);
-  const publicClient = createPublicClient({ chain: foundry, transport: http(RPC) });
-  const walletClient = createWalletClient({ account, chain: foundry, transport: http(RPC) });
+  const publicClient = createPublicClient({ chain: sepolia, transport: http(RPC) });
+  const chainId = await publicClient.getChainId();
+  if (chainId !== sepolia.id) {
+    console.error(`RPC is on chain ${chainId}, expected Sepolia (${sepolia.id})`);
+    process.exit(1);
+  }
 
-  const client = new TectonicClient({ address: manifest.tectonic, publicClient });
+  const client = new TectonicClient({ address: DEPLOYMENT.tectonic, publicClient });
 
   // --- 1. connect and read parameters -------------------------------------
   console.log("Parameters");
   const params = await client.init();
   check("init() read the contract", params.decimals === 18, `decimals=${params.decimals}`);
   check("symbol is readable", typeof params.symbol === "string", `symbol=${params.symbol}`);
+  check("fee matches the deployment", params.fee === DEPLOYMENT.fee, `fee=${params.fee}`);
+  check("devFee is readable", typeof params.devFee === "bigint", `devFee=${params.devFee}`);
   check(
-    "fees match the manifest",
-    params.fee === BigInt(manifest.fee) && params.treasuryFee === BigInt(manifest.treasuryFee),
-    `fee=${params.fee} treasuryFee=${params.treasuryFee}`
+    "reserve ratios match the deployment",
+    params.superCriticalReserveRatio === DEPLOYMENT.superCriticalReserveRatio &&
+      params.criticalReserveRatio === DEPLOYMENT.criticalReserveRatio &&
+      params.safeReserveRatio === DEPLOYMENT.safeReserveRatio
   );
-  check(
-    "equity coin address matches the manifest",
-    params.equityCoin.toLowerCase() === manifest.equityCoin.toLowerCase()
-  );
+  check("equity coin address matches the deployment", sameAddress(params.equityCoin, DEPLOYMENT.equityCoin));
+  check("oracle address matches the deployment", sameAddress(params.oracle, DEPLOYMENT.oracle));
 
   // --- 2. state and health -------------------------------------------------
   console.log("\nState");
@@ -98,7 +90,7 @@ async function main() {
   check("liabilities never exceed the reserve", state.liabilities <= state.reserve);
 
   const health = await client.getReserveHealth();
-  check("reserve health is classified", !!health.health, `health=${health.health}`);
+  check("reserve health is classified", !!health.health, `health=${health.health} ratio=${health.ratio}`);
 
   // --- 3. quote ------------------------------------------------------------
   console.log("\nQuote");
@@ -110,14 +102,30 @@ async function main() {
     quote.requiredBC > (quote.amountSC * quote.scPriceMint) / 10n ** 18n,
     "(strictly above the fee-free cost)"
   );
+  const minted = stablecoinsForPayment(quote.requiredBC, quote.scPriceMint, client.fees);
+  check("quoted payment mints at least the invoice", minted >= quote.amountSC, `surplus=${minted - quote.amountSC} base units`);
+
+  if (!MINT) {
+    console.log(`\n${pass} passed, ${fail} failed (read-only; pass --mint with PRIVATE_KEY to send a mint)`);
+    process.exit(fail === 0 ? 0 : 1);
+  }
+
+  if (!process.env.PRIVATE_KEY) {
+    console.error("\n--mint needs PRIVATE_KEY set to a funded Sepolia account");
+    process.exit(1);
+  }
 
   // --- 4. the real thing: mint to the merchant -----------------------------
-  console.log("\nMint");
-  const before = await client.getBalance(MERCHANT);
+  const account = privateKeyToAccount(process.env.PRIVATE_KEY);
+  const walletClient = createWalletClient({ account, chain: sepolia, transport: http(RPC) });
+  const merchant = process.env.MERCHANT ?? account.address;
+
+  console.log(`\nMint (payer ${account.address}, merchant ${merchant})`);
+  const before = await client.getBalance(merchant);
 
   const tx = await client.buildMintTx({
     payer: account.address,
-    receiver: MERCHANT,
+    receiver: merchant,
     value: quote.requiredBC,
   });
   check("gas was estimated, not hard-coded", typeof tx.gas === "bigint", `gas=${tx.gas}`);
@@ -128,10 +136,11 @@ async function main() {
     data: tx.data,
     gas: tx.gas,
   });
+  console.log(`  tx https://sepolia.etherscan.io/tx/${hash}`);
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   check("transaction succeeded", receipt.status === "success", `gasUsed=${receipt.gasUsed}`);
 
-  const after = await client.getBalance(MERCHANT);
+  const after = await client.getBalance(merchant);
   const received = after.raw - before.raw;
   const invoiced = quote.amountSC;
 
@@ -139,6 +148,8 @@ async function main() {
 
   // This is the assertion the whole integration depends on.
   check("MERCHANT WAS NOT SHORT-CHANGED", received >= invoiced, `surplus=${received - invoiced} base units`);
+  const verified = client.verifyMint({ receipt, receiver: merchant, expectedSC: invoiced });
+  check("Minted event covers the invoice", verified.ok, `minted=${fromBaseUnits(verified.minted, 18, 6)}`);
   check(
     "overpayment is dust",
     received - invoiced <= invoiced / 10n ** 9n + 1n,

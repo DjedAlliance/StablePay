@@ -2,34 +2,16 @@ import StablePay from 'stablepay-sdk';
 import './App.css';
 
 // ---------------------------------------------------------------------------
-// StablePay uses Tectonic exclusively, and there are no public Tectonic
-// deployments yet — so this demo needs a local one to talk to.
-//
-// Deploy with tectonic-local/script/DeployLocal.s.sol, then pass the printed
-// address (also written to tectonic-local/deployments/local.json):
+// StablePay uses Tectonic exclusively. This demo pays into the Tectonic
+// deployment on Ethereum Sepolia, crediting the merchant address passed in:
 //
 //   cd StablePay/stablepay-sdk/example
-//   VITE_TECTONIC_ADDRESS=0xYourTectonicAddress npm run dev
-//
-// useLocalTectonic writes the address into both the protocol slot and the
-// token slot, because under Tectonic they are the same contract.
+//   VITE_MERCHANT_ADDRESS=0xYourSepoliaAddress npm run dev
 // ---------------------------------------------------------------------------
-const TECTONIC_ADDRESS = import.meta.env.VITE_TECTONIC_ADDRESS;
-
-if (TECTONIC_ADDRESS) {
-  StablePay.useLocalTectonic(TECTONIC_ADDRESS);
-}
+const MERCHANT_ADDRESS = import.meta.env.VITE_MERCHANT_ADDRESS;
+const TECTONIC_ADDRESS = StablePay.networksConfig.sepolia.tectonicAddress;
 
 function App() {
-  const merchantConfig = new StablePay.Config({
-    // anvil account #1, so the merchant is an account you can inspect with
-    // `cast balance` and `cast call`.
-    receivingAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    amounts: { 'tectonic-local': { stablecoin: 5 } },
-  });
-
-  const networkSelector = new StablePay.NetworkSelector(merchantConfig);
-
   const handleTransactionComplete = ({
     txHash,
     network,
@@ -50,7 +32,7 @@ function App() {
     );
   };
 
-  if (!TECTONIC_ADDRESS) {
+  if (!MERCHANT_ADDRESS) {
     return (
       <div className="app-container">
         <header className="header">
@@ -58,25 +40,26 @@ function App() {
         </header>
         <main className="main-content">
           <div className="card">
-            <h2>No Tectonic address configured</h2>
+            <h2>No merchant address configured</h2>
             <p className="description">
-              Deploy Tectonic locally, then restart this demo with the address:
+              Restart this demo with the Sepolia address that should receive payments:
             </p>
             <pre style={{ fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>
-{`cd StablePay/tectonic-local
-anvil   # in another terminal
-forge script script/DeployLocal.s.sol \\
-  --rpc-url http://127.0.0.1:8545 --broadcast \\
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
-cd ../stablepay-sdk/example
-VITE_TECTONIC_ADDRESS=0x... npm run dev`}
+{`cd StablePay/stablepay-sdk/example
+VITE_MERCHANT_ADDRESS=0x... npm run dev`}
             </pre>
           </div>
         </main>
       </div>
     );
   }
+
+  const merchantConfig = new StablePay.Config({
+    receivingAddress: MERCHANT_ADDRESS,
+    amounts: { sepolia: { stablecoin: 5 } },
+  });
+
+  const networkSelector = new StablePay.NetworkSelector(merchantConfig);
 
   return (
     <div className="app-container">
@@ -93,7 +76,7 @@ VITE_TECTONIC_ADDRESS=0x... npm run dev`}
           }}
           title={TECTONIC_ADDRESS}
         >
-          local tectonic · {TECTONIC_ADDRESS.slice(0, 6)}…{TECTONIC_ADDRESS.slice(-4)}
+          sepolia tectonic · {TECTONIC_ADDRESS.slice(0, 6)}…{TECTONIC_ADDRESS.slice(-4)}
         </div>
       </header>
 
