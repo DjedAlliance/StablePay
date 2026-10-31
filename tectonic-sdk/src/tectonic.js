@@ -1,4 +1,4 @@
-import { createPublicClient, http, encodeFunctionData } from "viem";
+import { createPublicClient, http, encodeFunctionData, parseEventLogs } from "viem";
 import { TECTONIC_ABI } from "./artifacts/TectonicABI.js";
 import {
   D,
@@ -361,6 +361,26 @@ export class TectonicClient {
     } catch {
       return false;
     }
+  }
+
+  mintedToReceiver(receipt, receiver) {
+    if (!receiver) throw new Error("mintedToReceiver: receiver is required");
+    const contract = this.address.toLowerCase();
+    const target = receiver.toLowerCase();
+    return parseEventLogs({ abi: TECTONIC_ABI, eventName: "Minted", logs: receipt?.logs ?? [] })
+      .filter(
+        (log) => log.address.toLowerCase() === contract && log.args.receiver.toLowerCase() === target
+      )
+      .reduce((total, log) => total + log.args.amountSC, 0n);
+  }
+
+  verifyMint({ receipt, receiver, expectedSC }) {
+    if (typeof expectedSC !== "bigint" || expectedSC <= 0n) {
+      throw new Error("verifyMint: expectedSC must be a positive bigint (base units)");
+    }
+    const minted = receipt?.status === "success" ? this.mintedToReceiver(receipt, receiver) : 0n;
+    const shortfall = minted >= expectedSC ? 0n : expectedSC - minted;
+    return { ok: shortfall === 0n, minted, expected: expectedSC, shortfall };
   }
 
   /**

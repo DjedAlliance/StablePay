@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TectonicClient } from "../src/tectonic.js";
+import { encodeAbiParameters, encodeEventTopics } from "viem";
+import { TectonicClient, TECTONIC_ABI } from "../src/tectonic.js";
 import { RESERVE_HEALTH } from "../src/constants.js";
 
 const D = 10n ** 18n;
@@ -272,4 +273,59 @@ test("getBalance exposes both the raw and the fee-adjusted balance", async () =>
   assert.equal(balance.raw, 1000n * D);
   assert.equal(balance.effective, 990n * D);
   assert.ok(balance.effective < balance.raw, "stability fee reduces the effective balance");
+});
+
+function mintedLog({ address = ADDRESS, receiver = MERCHANT, amountSC, amountBC = 10n ** 15n }) {
+  return {
+    address,
+    topics: encodeEventTopics({ abi: TECTONIC_ABI, eventName: "Minted", args: { minter: PAYER, receiver } }),
+    data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [amountSC, amountBC]),
+  };
+}
+
+test("verifyMint accepts a mint that covers the invoice", () => {
+  const { client } = makeClient();
+  const receipt = { status: "success", logs: [mintedLog({ amountSC: 5n * D + 4472n })] };
+  const result = client.verifyMint({ receipt, receiver: MERCHANT, expectedSC: 5n * D });
+  assert.equal(result.ok, true);
+  assert.equal(result.minted, 5n * D + 4472n);
+  assert.equal(result.shortfall, 0n);
+});
+
+test("verifyMint reports the shortfall when the mint is below the invoice", () => {
+  const { client } = makeClient();
+  const receipt = { status: "success", logs: [mintedLog({ amountSC: 5n * D - 1000n })] };
+  const result = client.verifyMint({ receipt, receiver: MERCHANT, expectedSC: 5n * D });
+  assert.equal(result.ok, false);
+  assert.equal(result.shortfall, 1000n);
+});
+
+test("verifyMint only counts Minted events from this contract to the receiver", () => {
+  const { client } = makeClient();
+  const receipt = {
+    status: "success",
+    logs: [
+      mintedLog({ amountSC: 3n * D }),
+      mintedLog({ amountSC: 9n * D, receiver: PAYER }),
+      mintedLog({ amountSC: 9n * D, address: "0x6666666666666666666666666666666666666666" }),
+    ],
+  };
+  const result = client.verifyMint({ receipt, receiver: MERCHANT.toLowerCase(), expectedSC: 5n * D });
+  assert.equal(result.minted, 3n * D);
+  assert.equal(result.ok, false);
+});
+
+test("verifyMint treats a receipt without a Minted event or a reverted receipt as nothing minted", () => {
+  const { client } = makeClient();
+  assert.equal(client.verifyMint({ receipt: { status: "success", logs: [] }, receiver: MERCHANT, expectedSC: D }).minted, 0n);
+  const reverted = { status: "reverted", logs: [mintedLog({ amountSC: 5n * D })] };
+  assert.equal(client.verifyMint({ receipt: reverted, receiver: MERCHANT, expectedSC: D }).ok, false);
+});
+
+test("verifyMint rejects a non-bigint invoice", () => {
+  const { client } = makeClient();
+  assert.throws(
+    () => client.verifyMint({ receipt: { status: "success", logs: [] }, receiver: MERCHANT, expectedSC: 5 }),
+    /expectedSC must be a positive bigint/
+  );
 });

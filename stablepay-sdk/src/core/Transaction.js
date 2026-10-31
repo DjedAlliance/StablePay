@@ -92,6 +92,10 @@ export class Transaction {
     return this.adapter.buildMintTx({ payer, receiver, value });
   }
 
+  verifyNativePayment({ receipt, receiver, expectedSC }) {
+    return this.adapter.verifyNativePayment({ receipt, receiver, expectedSC });
+  }
+
   /** Build a direct ERC-20 stablecoin transfer to the merchant. */
   buildTransferTx({ from, to, amount }) {
     return this.adapter.buildTransferTx({ from, to, amount });

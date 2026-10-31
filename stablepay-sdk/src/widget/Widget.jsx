@@ -8,7 +8,7 @@ import { NetworkProvider, useNetwork } from "../contexts/NetworkContext";
 import { WalletProvider } from "../contexts/WalletContext";
 import styles from "../styles/PricingCard.css";
 
-const WidgetContent = ({ onClose, buttonSize, onTransactionComplete }) => {
+const WidgetContent = ({ onClose, buttonSize, onTransactionComplete, onTransactionUnderpaid }) => {
   const { resetSelections } = useNetwork(); 
 
   const handleClose = () => {
@@ -20,22 +20,30 @@ const WidgetContent = ({ onClose, buttonSize, onTransactionComplete }) => {
     <Dialog onClose={handleClose} size={buttonSize}>
       <NetworkDropdown />
       <TokenDropdown />
-      <TransactionReview onTransactionComplete={onTransactionComplete} />
+      <TransactionReview
+        onTransactionComplete={onTransactionComplete}
+        onTransactionUnderpaid={onTransactionUnderpaid}
+      />
     </Dialog>
   );
 };
 
-const WidgetWithProviders = ({ onClose, buttonSize, networkSelector, onTransactionComplete }) => {
+const WidgetWithProviders = ({ onClose, buttonSize, networkSelector, onTransactionComplete, onTransactionUnderpaid }) => {
   return (
     <NetworkProvider networkSelector={networkSelector}>
       <WalletProvider> 
-        <WidgetContent onClose={onClose} buttonSize={buttonSize} onTransactionComplete={onTransactionComplete} />
+        <WidgetContent
+          onClose={onClose}
+          buttonSize={buttonSize}
+          onTransactionComplete={onTransactionComplete}
+          onTransactionUnderpaid={onTransactionUnderpaid}
+        />
       </WalletProvider>
     </NetworkProvider>
   );
 };
 
-export const Widget = ({ networkSelector, buttonSize = "medium", onTransactionComplete, onSuccess }) => {
+export const Widget = ({ networkSelector, buttonSize = "medium", onTransactionComplete, onSuccess, onTransactionUnderpaid }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleOpenDialog = () => {
@@ -60,6 +68,7 @@ export const Widget = ({ networkSelector, buttonSize = "medium", onTransactionCo
           buttonSize={buttonSize}
           networkSelector={networkSelector}
           onTransactionComplete={handleTransactionComplete}
+          onTransactionUnderpaid={onTransactionUnderpaid}
         />
       )}
     </div>

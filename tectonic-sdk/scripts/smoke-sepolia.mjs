@@ -148,6 +148,8 @@ async function main() {
 
   // This is the assertion the whole integration depends on.
   check("MERCHANT WAS NOT SHORT-CHANGED", received >= invoiced, `surplus=${received - invoiced} base units`);
+  const verified = client.verifyMint({ receipt, receiver: merchant, expectedSC: invoiced });
+  check("Minted event covers the invoice", verified.ok, `minted=${fromBaseUnits(verified.minted, 18, 6)}`);
   check(
     "overpayment is dust",
     received - invoiced <= invoiced / 10n ** 9n + 1n,

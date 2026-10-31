@@ -55,6 +55,7 @@ export class TectonicAdapter {
   async quoteNativePayment(amountSC) {
     const quote = await this.client.quoteMint(amountSC);
     return {
+      amountSC: quote.amountSC,
       requiredBC: quote.requiredBC,
       requiredBCFormatted: quote.requiredBCFormatted,
       scPrice: quote.scPriceMint,
@@ -67,6 +68,16 @@ export class TectonicAdapter {
 
   buildTransferTx({ from, to, amount }) {
     return this.client.buildTransferTx({ from, to, amount });
+  }
+
+  verifyNativePayment({ receipt, receiver, expectedSC }) {
+    const result = this.client.verifyMint({ receipt, receiver, expectedSC });
+    const decimals = this.getDecimals();
+    return {
+      ...result,
+      mintedFormatted: fromBaseUnits(result.minted, decimals, 6),
+      shortfallFormatted: fromBaseUnits(result.shortfall, decimals, decimals),
+    };
   }
 
   getDetails() {
